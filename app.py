@@ -238,18 +238,7 @@ def visualize_seir_graph():
     st.markdown(f"- Assortatividade: {assortativity:.2f}")
     st.markdown(f"- Número de componentes conectados: {connected_components}")
     
-    st.subheader("Distribuição do Grau dos Nós")
-    degree_sequence = [d for n, d in H.degree()]
-    fig, ax = plt.subplots()
-    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
-    ax.set_title("Distribuição de Grau dos Nós")
-    ax.set_xlabel("Grau")
-    ax.set_ylabel("Quantidade de Nós")
-    st.pyplot(fig)
-    
     node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
-    st.subheader("Visualização Estática do Grafo SEIR")
-    create_matplotlib_graph(H, node_colors, "Rede após Simulação SEIR")
     st.subheader("Visualização Interativa do Grafo SEIR")
     create_pyvis_graph(H, node_colors, "Rede após Simulação SEIR", "grafo_seir.html")
 
