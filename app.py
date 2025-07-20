@@ -123,18 +123,6 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
         st.components.v1.html(html, height=750)
     st.write(f"Visualização salva em: {path}")
 
-# Função para criar visualização estática com Matplotlib
-def create_matplotlib_graph(G, node_colors, title):
-    if G is None:
-        st.error("Erro: Grafo não foi carregado para visualização estática.")
-        return
-    plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(G, seed=42)
-    nx.draw(G, pos, node_color=[node_colors.get(node, '#669BBC') for node in G.nodes()], 
-            node_size=50, with_labels=False)
-    plt.title(title)
-    st.pyplot(plt)
-
 # Visualização do grafo original
 def visualize_original_graph():
     st.title("Visualização do Grafo Original")
@@ -178,8 +166,6 @@ def visualize_original_graph():
     st.pyplot(fig)
     
     node_colors = {node: color_map[0] for node in H.nodes()}
-    st.subheader("Visualização Estática do Grafo Original")
-    create_matplotlib_graph(H, node_colors, "Grafo Original")
     st.subheader("Visualização Interativa do Grafo Original")
     create_pyvis_graph(H, node_colors, "Grafo Original", "grafo_original.html")
 
@@ -260,24 +246,17 @@ legend_elements = [
     mpatches.Patch(color="#F4A261", label="Expostos"),
 ]
 
-# Mostrar no sidebar do Streamlit
-st.sidebar.markdown("### Legenda")
+
+# Interface principal
+if __name__ == "__main__":
+    st.sidebar.title("Navegação")
 for patch in legend_elements:
     cor_hex = to_hex(patch.get_facecolor())
     st.sidebar.markdown(
         f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
         unsafe_allow_html=True
     )
-
-
-# Interface principal
-if __name__ == "__main__":
-    st.sidebar.title("Navegação")
-    page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
-    
-    st.sidebar.markdown("### Legenda de Cores")
-    for patch in legend_elements:
-        st.sidebar.markdown(f"- {patch.get_label()}: <span style='color:{patch.get_facecolor()}'>⬤</span>", unsafe_allow_html=True)
+page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
     
     if page == "Grafo Original":
         visualize_original_graph()
