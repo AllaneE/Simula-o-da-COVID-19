@@ -12,4 +12,4 @@ Este repositório contém uma simulação da propagação da COVID-19 usando o m
   - Mortos: preto
   - Nó previsto: destacado com tamanho maior e borda
 
-Toda a explicação esta disponível no [notebook de simulação](Simulação_da_COVID_19 (1).ipynb) ou no [Notebook Colab](https://colab.research.google.com/drive/1fTmTeAYljoEoe483SzvV4Ky72yUkj23a?usp=sharing).
+Toda a explicação esta disponível no [notebook de simulação](https://github.com/AllaneE/Simula-o-da-COVID-19/blob/main/Simulação_da_COVID_19%20(1).ipynb) ou no [Notebook Colab](https://colab.research.google.com/drive/1fTmTeAYljoEoe483SzvV4Ky72yUkj23a?usp=sharing).
