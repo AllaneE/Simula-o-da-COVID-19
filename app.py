@@ -141,7 +141,7 @@ def visualize_original_graph():
         st.error("Não foi possível car será possível prosseguir com a visualização.")
         return
     
-    sample_nodes = list(G.nodes())[:900]
+    sample_nodes = list(G.nodes())[:500]
     sample_nodes = [node for node in sample_nodes if node in G.nodes()]
     H = G.subgraph(sample_nodes)
     
@@ -178,7 +178,7 @@ def visualize_original_graph():
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
     G_seir, status_dict = load_seir_graph()
-    sample_nodes = list(G_seir.nodes())[:9000]
+    sample_nodes = list(G_seir.nodes())[:500]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
     
@@ -211,7 +211,7 @@ def visualize_link_prediction_graph():
         st.error("Não foi possível carregar os dados de link prediction.")
         return
     
-    sample_nodes = list(G_seir.nodes())[:1000]
+    sample_nodes = list(G_seir.nodes())[:500]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
     
