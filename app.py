@@ -70,7 +70,7 @@ try:
     num_nodes = G_original.number_of_nodes()
     num_edges = G_original.number_of_edges()
     st.write(f"Nós: {num_nodes}")
-    st.whitee(f"Arestas: {num_edges}")
+    st.white(f"Arestas: {num_edges}")
     create_pyvis_graph(G_original, node_colors, "Grafo Original", "grafo_original.html")
     with open("grafo_original.html", "r", encoding="utf-8") as f:
         st.components.v1.html(f.read(), height=800)
