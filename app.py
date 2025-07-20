@@ -116,10 +116,11 @@ def visualize_original_graph():
     H = G.subgraph(sample_nodes)
     
     # Salvar introdução e métricas em um arquivo Markdown
-    intro = """# Visualização do Grafo Original
-## Introdução ao Projeto
-Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
-"""
+    st.title(" Visualização do Grafo Original")
+    st.markdown("""
+    Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
+    """)
+
     metrics = calculate_graph_metrics(G, "Grafo Original")
     with open("grafo_original_metrics.md", "w") as f:
         f.write(intro + "\n" + metrics)
