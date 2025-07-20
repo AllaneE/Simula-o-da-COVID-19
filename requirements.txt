@@ -1,5 +1,5 @@
-streamlit==1.36.0
-networkx==3.3
-pandas==2.2.2
-pyvis==0.3.2
-matplotlib==3.9.1
+streamlit
+networkx
+pandas
+pyvis
+matplotlib
