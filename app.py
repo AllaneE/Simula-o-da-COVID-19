@@ -28,26 +28,40 @@ st.header("Grafo Original")
 st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
-
-
+st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_original):.2f}")
+st.markdown(f"**Clustering Médio**: {nx.average_clustering(G_original):.2f}")
 
 # Visualizar grafo original
-net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
-net.show("grafo_original.html")
-st.markdown("Abra o grafo interativo gerado manualmente [aqui](grafo_original.html)")
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black", notebook=False)
 for node, data in G_original.nodes(data=True):
     label = f"Nó {node}"
     net.add_node(node, label=label, color="#C6E5B1", title=f"<b>{label}</b><br>Status: Desconhecido", size=10)
 for source, target in G_original.edges():
     net.add_edge(source, target)
-    
-components.html(net.generate_html(), height=800)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+try:
+    html_content = net.generate_html()
+    components.html(html_content, height=800)
+except Exception as e:
+    st.error(f"Erro ao renderizar o grafo original: {e}")
 
 # Exibir métricas do grafo SEIR
 st.header("Grafo após Simulação SEIR")
 st.markdown(f"**Nós**: {G_seir.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_seir.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_seir):.2f}")
+st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_seir):.2f}")
+st.markdown(f"**Clustering Médio**: {nx.average_clustering(G_seir):.2f}")
+st.markdown(f"**Componentes Conectados**: {len(list(nx.connected_components(G_seir)))}")
 
 # Contagem de estados
 st.subheader("Quantidade por Estado")
@@ -60,7 +74,7 @@ for node in G_seir.nodes():
     G_seir.nodes[node]['status_label'] = status[0] if len(status) > 0 else 'Desconhecido'
 
 # Visualizar grafo SEIR
-net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black", notebook=False)
 for node, data in G_seir.nodes(data=True):
     status = data.get('status_label', 'Desconhecido')
     color = color_map.get(status, '#999999')
@@ -68,8 +82,21 @@ for node, data in G_seir.nodes(data=True):
     net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
 for source, target in G_seir.edges():
     net.add_edge(source, target)
-    
-components.html(net.generate_html(), height=800)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+try:
+    html_content = net.generate_html()
+    components.html(html_content, height=800)
+except Exception as e:
+    st.error(f"Erro ao renderizar o grafo SEIR: {e}")
 
 # Top 10 nós mais infectados
 st.header("Top 10 Nós Mais Infectados")
@@ -84,7 +111,7 @@ for node in G_risco.nodes():
     G_risco.nodes[node]['status_label'] = 'Em risco' if node in top10_risco else G_seir.nodes[node]['status_label']
 
 # Visualizar grafo com nós em risco
-net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black", notebook=False)
 for node, data in G_risco.nodes(data=True):
     status = data.get('status_label', 'Desconhecido')
     color = color_risco_map.get(status, '#999999')
@@ -92,8 +119,21 @@ for node, data in G_risco.nodes(data=True):
     net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
 for source, target in G_risco.edges():
     net.add_edge(source, target)
-    
-components.html(net.generate_html(), height=800)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+try:
+    html_content = net.generate_html()
+    components.html(html_content, height=800)
+except Exception as e:
+    st.error(f"Erro ao renderizar o grafo com nós em risco: {e}")
 
 # Legenda
 st.markdown("""
