@@ -8,20 +8,21 @@ import tempfile
 import os
 
 # Função para exibir grafo Pyvis no Streamlit
-def display_pyvis_graph(graph):
-    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white", notebook=False)
-    for node in graph.nodes(data=True):
-        color = node[1].get('color', '#FFFFFF')
-        label = node[1].get('label', str(node[0]))
-        net.add_node(node[0], label=label, color=color)
-    for edge in graph.edges():
-        net.add_edge(edge[0], edge[1])
+def display_pyvis_graph(G, name="graph.html"):
+    from pyvis.network import Network
+    import streamlit.components.v1 as components
+
+    net = Network(notebook=False, height="600px", width="100%", bgcolor="#222222", font_color="white")
+    net.from_nx(G)
+    path = f"/tmp/{name}"
     
-    path = tempfile.mktemp(suffix=".html")
-    net.show(path)
-    with open(path, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    st.components.v1.html(html_content, height=650, scrolling=True)
+    # Gera o HTML com notebook=False para funcionar no Streamlit
+    net.show(path)  # Por padrão, notebook=False
+    
+    # Exibe no Streamlit
+    HtmlFile = open(path, 'r', encoding='utf-8')
+    source_code = HtmlFile.read()
+    components.html(source_code, height=600, width=1000)
 
 # --- Carregamento dos dados ---
 G_original = nx.read_graphml('grafo_original.graphml')
