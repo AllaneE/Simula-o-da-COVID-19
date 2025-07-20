@@ -163,10 +163,6 @@ def visualize_original_graph():
 # Visualização do grafo SEIR
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
-    G_seir = load_seir_graph()
-    if G_seir is None:
-        st.error("Não foi possível carregar o grafo SEIR. Verifique os arquivos de entrada.")
-        return
     
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
@@ -196,10 +192,6 @@ def visualize_seir_graph():
 # Visualização do grafo com link prediction
 def visualize_link_prediction_graph():
     st.title("Previsão de Próximos Infectados com Link Prediction")
-    G_seir = load_seir_graph()
-    if G_seir is None:
-        st.error("Não foi possível carregar o grafo SEIR para link prediction. Verifique os arquivos de entrada.")
-        return
     
     top_risk_nodes, top10_df = load_link_prediction_data()
     if top10_df.empty:
