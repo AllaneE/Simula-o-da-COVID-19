@@ -14,10 +14,12 @@ Utilizamos métricas de teoria de redes para analisar o grafo antes e depois da 
 
 @st.cache_data
 def grafos_e_dados():
-  G_original = nx.read_graphml("grafo_original.graphml")
-  G_seir = nx.read_graphml("grafo_seir.graphml")
-  df_status = pd.read_csv("status.csv")
-  df_top10 = pd.read_csv("top10.csv")
+  def grafos_e_dados():
+    G_original = nx.read_graphml("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/main/grafo_original.graphml")
+    G_seir = nx.read_graphml("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/main/grafo_seir.graphml")
+    df_status = pd.read_csv("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/main/status.csv")
+    df_top10 = pd.read_csv("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/main/top10.csv")
+    return G_original, G_seir, df_status, df_top10
   return G_original, G_seir, df_status, df_top10
 
 try:
