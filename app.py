@@ -29,11 +29,12 @@ st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
 
-net.show("grafo_original.html")
-st.markdown("Abra o grafo interativo gerado manualmente [aqui](grafo_original.html)")
+
 
 # Visualizar grafo original
 net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+net.show("grafo_original.html")
+st.markdown("Abra o grafo interativo gerado manualmente [aqui](grafo_original.html)")
 for node, data in G_original.nodes(data=True):
     label = f"Nó {node}"
     net.add_node(node, label=label, color="#C6E5B1", title=f"<b>{label}</b><br>Status: Desconhecido", size=10)
