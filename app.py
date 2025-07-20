@@ -250,13 +250,12 @@ legend_elements = [
 # Interface principal
 if __name__ == "__main__":
     st.sidebar.title("Navegação")
-for patch in legend_elements:
-    cor_hex = to_hex(patch.get_facecolor())
-    st.sidebar.markdown(
-        f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
-        unsafe_allow_html=True
-    )
-page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
+    for patch in legend_elements:
+        cor_hex = to_hex(patch.get_facecolor())
+        st.sidebar.markdown(
+            f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
+            unsafe_allow_html=True)
+    page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
     
     if page == "Grafo Original":
         visualize_original_graph()
