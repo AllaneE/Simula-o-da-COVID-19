@@ -41,6 +41,29 @@ def calculate_graph_metrics(G, graph_name):
         st.error(f"Erro ao calcular métricas para {graph_name}: {str(e)}")
         return None, 0, 0, 0.0, 0.0, 0.0, 0.0, 0
 
+# Função para carregar o grafo original
+def load_original_graph():
+    try:
+        G = nx.read_graphml('grafo_original.graphml')
+        print("Grafo original carregado de grafo_original.graphml")
+    except FileNotFoundError:
+        G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
+    return G
+
+# Função para carregar o grafo SEIR e os estados
+def load_seir_graph():
+    G_seir = nx.read_graphml('grafo_seir.graphml')
+    status_df = pd.read_csv('status.csv')
+    status_dict = dict(zip(status_df['node'], status_df['status']))
+    return G_seir, status_dict
+
+# Função para carregar dados de link prediction
+def load_link_prediction_data():
+    top10_df = pd.read_csv('top10.csv')
+    top_risk_nodes = set(top10_df['node'][:5])  # Top 5 nós de risco
+    return top_risk_nodes, top10_df
+
+
 # Função para criar visualização com PyVis
 def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     if G is None:
@@ -163,7 +186,7 @@ def visualize_original_graph():
 # Visualização do grafo SEIR
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
-    
+    G_seir, status_dict = load_seir_graph()
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
@@ -192,7 +215,7 @@ def visualize_seir_graph():
 # Visualização do grafo com link prediction
 def visualize_link_prediction_graph():
     st.title("Previsão de Próximos Infectados com Link Prediction")
-    
+    G_seir, status_dict = load_seir_graph()
     top_risk_nodes, top10_df = load_link_prediction_data()
     if top10_df.empty:
         st.error("Não foi possível carregar os dados de link prediction.")
