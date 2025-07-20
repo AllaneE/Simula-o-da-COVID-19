@@ -131,7 +131,7 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
 
 # Visualização do grafo original
 def visualize_original_graph():
-    st.title("Visualização do Grafo Original")
+    st.title("Simulação da COVID-19 com SEIR")
     st.markdown("""
     Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
     """)
