@@ -85,7 +85,7 @@ st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_origin
 st.markdown(f"**Coeficiente de Clustering**: {nx.average_clustering(G_original):.2f}")
 
 # Visualizar grafo original
-node_sizes = {n: 10 + 50 * centralidades["Degree Centrality"][n] for n in G_original.nodes()}
+node_sizes = {n: 10 for n in G_original.nodes()}  # Tamanho fixo, como no primeiro código
 node_labels = {n: f"Nó {n}" for n in G_original.nodes()}
 grafo_pyvis(G_original, color_map=None, node_sizes=node_sizes, node_labels=node_labels)
 
@@ -112,9 +112,9 @@ for node in G_seir.nodes():
     else:
         G_seir.nodes[node]['status_label'] = 'Desconhecido'
 
-node_sizes_seir = {n: 10 + 50 * centralidades_seir["Degree Centrality"][n] for n in G_seir.nodes()}
+node_sizes_seir = {n: 10 for n in G_seir.nodes()}  # Tamanho fixo, como no primeiro código
 node_labels_seir = {n: f"Nó {n}" for n in G_seir.nodes()}
-grafo_pyvis(G_seir, color_map=color_map, node_sizes=node_sizes_seir, node_labels=node_labels_seir)
+grafo_pyvis(G_seir, color_map=None, node_sizes=node_sizes_seir, node_labels=node_labels_seir)
 
 # Top 10 nós mais infectados
 st.header("Top 10 Nós Mais Infectados")
