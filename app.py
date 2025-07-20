@@ -251,6 +251,16 @@ def visualize_link_prediction_graph():
 # Legenda para referência
 from matplotlib.colors import to_hex
 
+# Criar os patches
+legend_elements = [
+    mpatches.Patch(color="#C1121F", label="Infectado"),
+    mpatches.Patch(color="#4A5759", label="Recuperado"),
+    mpatches.Patch(color="#669BBC", label="Suscetível"),
+    mpatches.Patch(color="purple", label="Próv. Infectado (risco)"),
+    mpatches.Patch(color="#F4A261", label="Expostos"),
+]
+
+# Mostrar no sidebar do Streamlit
 st.sidebar.markdown("### Legenda")
 for patch in legend_elements:
     cor_hex = to_hex(patch.get_facecolor())
@@ -258,6 +268,7 @@ for patch in legend_elements:
         f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
         unsafe_allow_html=True
     )
+
 
 # Interface principal
 if __name__ == "__main__":
