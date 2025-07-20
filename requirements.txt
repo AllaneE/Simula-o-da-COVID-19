@@ -7,3 +7,4 @@ pyvis
 scikit-learn
 ndlib
 bokeh
+requests
