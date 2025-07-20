@@ -2,9 +2,6 @@ import streamlit as st
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
-from collections import defaultdict
-import requests
-from io import StringIO
 
 st.set_page_config(page_title="Projeto Simulação SEIR - COVID-19", layout="wide")
 
@@ -43,10 +40,10 @@ def grafo_pyvis(G, height=600, width="100%"):
       }
     }
     """)
-    net.show("temp.html")
-    with open("temp.html", "r") as f:
-        html_str = f.read()
-    st.components.v1.html(html_str, height=height+50)
+    
+    # Gerar HTML em memória e injetar direto
+    html_str = net.generate_html()
+    st.components.v1.html(html_str, height=height+50, width=width)
 
 st.header("Grafo Original")
 st.write(f"Número de nós: {G_original.number_of_nodes()}")
@@ -81,6 +78,7 @@ grafo_pyvis(G_seir)
 
 st.header("Top 10 nós mais infectados")
 st.table(df_top10)
+
 st.subheader("Grafo com possíveis nós")
 color_risco_map = {'Infectado': '#C1121F', 'Removido': '#4A5759', 'Suscetível': '#669BBC', 'Em risco': 'purple', 'Exposto': '#F4A261'}
 G_risco = G_seir.copy()
@@ -94,6 +92,7 @@ for node in G_risco.nodes():
             G_risco.nodes[node]['color'] = color_risco_map.get(status_label[0], '#999999')
         else:
             G_risco.nodes[node]['color'] = '#999999'
+
 grafo_pyvis(G_risco)
 
 st.markdown("""
@@ -105,3 +104,4 @@ st.markdown("""
 - Amarelo: Exposto  
 - Roxo: Próximos nós com maior risco (Link Prediction)
 """)
+
