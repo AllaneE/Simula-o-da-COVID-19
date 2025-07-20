@@ -45,23 +45,69 @@ def calculate_graph_metrics(G, graph_name):
 def load_original_graph():
     try:
         G = nx.read_graphml('grafo_original.graphml')
-        print("Grafo original carregado de grafo_original.graphml")
+        st.write("Grafo original carregado de grafo_original.graphml")
     except FileNotFoundError:
         G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
+        st.write("Grafo original carregado de facebook_combined.txt")
     return G
 
 # Função para carregar o grafo SEIR e os estados
 def load_seir_graph():
-    G_seir = nx.read_graphml('grafo_seir.graphml')
-    status_df = pd.read_csv('status.csv')
-    status_dict = dict(zip(status_df['Node'], status_df['Status']))
-    return G_seir, status_dict
+    try:
+        G_seir = nx.read_graphml('grafo_seir.graphml')
+        status_df = pd.read_csv('status.csv')
+        
+        # Verificar nomes das colunas
+        if 'Node' in status_df.columns and 'Status' in status_df.columns:
+            node_col, status_col = 'Node', 'Status'
+        elif 'node' in status_df.columns and 'status' in status_df.columns:
+            node_col, status_col = 'node', 'status'
+        else:
+            st.error("As colunas esperadas ('Node'/'node' e 'Status'/'status') não foram encontradas em status.csv")
+            return G_seir, {}
+        
+        # Converter IDs para inteiros
+        status_df[node_col] = pd.to_numeric(status_df[node_col], errors='coerce')
+        status_df = status_df.dropna(subset=[node_col])
+        status_df[node_col] = status_df[node_col].astype(int)
+        
+        # Validar valores de status
+        valid_statuses = {0, 1, 2, 3}
+        invalid_statuses = set(status_df[status_col]) - valid_statuses
+        if invalid_statuses:
+            st.warning(f"Valores inválidos encontrados em {status_col}: {invalid_statuses}. Usando estado padrão (0) para esses nós.")
+        
+        status_dict = dict(zip(status_df[node_col], status_df[status_col]))
+        st.write(f"Nós em status.csv ({node_col}): {status_df[node_col].tolist()[:5]}")
+        st.write(f"Estados em status.csv ({status_col}): {status_df[status_col].tolist()[:5]}")
+        st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
+        return G_seir, status_dict
+    except Exception as e:
+        st.error(f"Erro ao carregar grafo SEIR ou status.csv: {str(e)}")
+        return None, {}
 
 # Função para carregar dados de link prediction
 def load_link_prediction_data():
-    top10_df = pd.read_csv('top10.csv')
-    return top10_df
-
+    try:
+        top10_df = pd.read_csv('top10.csv')
+        if 'Node' in top10_df.columns:
+            node_col = 'Node'
+        elif 'node' in top10_df.columns:
+            node_col = 'node'
+        else:
+            st.error("Coluna 'Node' ou 'node' não encontrada em top10.csv")
+            return set(), pd.DataFrame()
+        
+        top10_df[node_col] = pd.to_numeric(top10_df[node_col], errors='coerce')
+        top10_df = top10_df.dropna(subset=[node_col])
+        top10_df[node_col] = top10_df[node_col].astype(int)
+        
+        top_risk_nodes = set(top10_df[node_col][:5])
+        st.write(f"Top 5 nós de risco: {top_risk_nodes}")
+        return top_risk_nodes, top10_df
+    except Exception as e:
+        st.error(f"Erro ao carregar top10.csv: {str(e)}")
+        return set(), pd.DataFrame()
 
 # Função para criar visualização com PyVis
 def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
@@ -138,7 +184,7 @@ def visualize_original_graph():
     
     G = load_original_graph()
     if G is None:
-        st.error("Não foi possível car será possível prosseguir com a visualização.")
+        st.error("Não foi possível carregar o grafo original. Verifique os arquivos de entrada.")
         return
     
     sample_nodes = list(G.nodes())[:500]
@@ -178,83 +224,4 @@ def visualize_original_graph():
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
     G_seir, status_dict = load_seir_graph()
-    sample_nodes = list(G_seir.nodes())[:500]
-    sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
-    H = G_seir.subgraph(sample_nodes)
-    
-    metrics_data = calculate_graph_metrics(G_seir, "Grafo SEIR")
-    if metrics_data[0] is None:
-        st.error("Não foi possível calcular as métricas do grafo SEIR.")
-        return
-    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = metrics_data
-    
-    with open("grafo_seir_metrics.md", "w") as f:
-        f.write(metrics)
-    st.subheader("Métricas do Grafo SEIR")
-    st.markdown(f"- Número de nós: {num_nodes}")
-    st.markdown(f"- Número de arestas: {num_edges}")
-    st.markdown(f"- Grau médio: {avg_degree:.2f}")
-    st.markdown(f"- Densidade: {density:.4f}")
-    st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
-    st.markdown(f"- Assortatividade: {assortativity:.2f}")
-    
-    node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
-    st.subheader("Visualização Interativa do Grafo SEIR")
-    create_pyvis_graph(H, node_colors, "Rede após Simulação SEIR", "grafo_seir.html")
-
-# Visualização do grafo com link prediction
-def visualize_link_prediction_graph():
-    st.title("Previsão de Próximos Infectados com Link Prediction")
-    G_seir, status_dict = load_seir_graph()
-    top_risk_nodes, top10_df = load_link_prediction_data()
-    if top10_df.empty:
-        st.error("Não foi possível carregar os dados de link prediction.")
-        return
-    
-    sample_nodes = list(G_seir.nodes())[:500]
-    sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
-    H = G_seir.subgraph(sample_nodes)
-    
-    colors = {}
-    for node in H.nodes():
-        if node in top_risk_nodes:
-            colors[node] = "purple"
-        else:
-            status = status_dict.get(node, 0)
-            colors[node] = color_map[status]
-    
-    st.subheader("Top 10 Nós de Risco")
-    st.dataframe(top10_df.head(10))
-
-    st.subheader("Visualização Interativa do Grafo com Link Prediction")
-    create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
-
-# Legenda para referência
-from matplotlib.colors import to_hex
-
-# Criar os patches
-legend_elements = [
-    mpatches.Patch(color="#C1121F", label="Infectado"),
-    mpatches.Patch(color="#4A5759", label="Recuperado"),
-    mpatches.Patch(color="#669BBC", label="Suscetível"),
-    mpatches.Patch(color="purple", label="Próv. Infectado (risco)"),
-    mpatches.Patch(color="#F4A261", label="Expostos"),
-]
-
-
-# Interface principal
-if __name__ == "__main__":
-    st.sidebar.title("Navegação")
-    for patch in legend_elements:
-        cor_hex = to_hex(patch.get_facecolor())
-        st.sidebar.markdown(
-            f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
-            unsafe_allow_html=True)
-    page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
-    
-    if page == "Grafo Original":
-        visualize_original_graph()
-    elif page == "Grafo SEIR":
-        visualize_seir_graph()
-    elif page == "Link Prediction":
-        visualize_link_prediction_graph()
+    if G_seir is None or not status_dict
