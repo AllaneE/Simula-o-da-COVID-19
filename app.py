@@ -91,11 +91,11 @@ try:
     G_seid = load_graph("grafo_seir.graphml", file_type='graphml')
     # Carregar estados dos nós a partir de status.csv
     status_df = pd.read_csv("status.csv")
-    state_counts = status_df['status'].value_counts().to_dict()
+    state_counts = status_df['status_label'].value_counts().to_dict()
     
     # Atribuir estados aos nós
     for _, row in status_df.iterrows():
-        G_seid.nodes[row['node']]['status'] = row['status']
+        G_seid.nodes[row['node']]['status_label'] = row['status']
     
     st.write(f"Número de nós: {G_seid.number_of_nodes()}")
     st.write(f"Número de arestas: {G_seid.number_of_edges()}")
