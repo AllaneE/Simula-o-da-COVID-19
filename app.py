@@ -36,6 +36,7 @@ for node, data in G_original.nodes(data=True):
     net.add_node(node, label=label, color="#C6E5B1", title=f"<b>{label}</b><br>Status: Desconhecido", size=10)
 for source, target in G_original.edges():
     net.add_edge(source, target)
+    
 components.html(net.generate_html(), height=800)
 
 # Exibir métricas do grafo SEIR
@@ -62,6 +63,8 @@ for node, data in G_seir.nodes(data=True):
     label = f"Nó {node}"
     net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
 for source, target in G_seir.edges():
+    net.add_edge(source, target)
+    
 components.html(net.generate_html(), height=800)
 
 # Top 10 nós mais infectados
@@ -85,6 +88,7 @@ for node, data in G_risco.nodes(data=True):
     net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
 for source, target in G_risco.edges():
     net.add_edge(source, target)
+    
 components.html(net.generate_html(), height=800)
 
 # Legenda
