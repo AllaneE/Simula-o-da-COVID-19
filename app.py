@@ -2,7 +2,12 @@ import streamlit as st
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
+import requests
+from io import StringIO
+import matplotlib.pyplot as plt
+import streamlit.components.v1 as components
 
+# Configuração inicial
 st.set_page_config(page_title="Projeto Simulação SEIR - COVID-19", layout="wide")
 
 st.title("Simulação Epidemia SEIR em Rede - COVID-19")
@@ -13,11 +18,41 @@ Utilizamos métricas de teoria de redes para analisar o grafo antes e depois da 
 
 @st.cache_data
 def grafos_e_dados():
-    G_original = nx.read_graphml("grafo_original.graphml")
-    G_seir = nx.read_graphml("grafo_seir.graphml")
-    df_status = pd.read_csv("status.csv")
-    df_top10 = pd.read_csv("top10.csv")
-    return G_original, G_seir, df_status, df_top10
+    urls = {
+        'grafo_original': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_original.graphml',
+        'grafo_seir': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_seir.graphml',
+        'status': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/status.csv',
+        'top10': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/top10.csv'
+    }
+
+    try:
+        # Carregar grafo_original
+        response = requests.get(urls['grafo_original'])
+        response.raise_for_status()
+        G_original = nx.read_graphml(StringIO(response.text))
+
+        # Carregar grafo_seir
+        response = requests.get(urls['grafo_seir'])
+        response.raise_for_status()
+        G_seir = nx.read_graphml(StringIO(response.text))
+
+        # Carregar status.csv
+        response = requests.get(urls['status'])
+        response.raise_for_status()
+        df_status = pd.read_csv(StringIO(response.text))
+
+        # Carregar top10.csv
+        response = requests.get(urls['top10'])
+        response.raise_for_status()
+        df_top10 = pd.read_csv(StringIO(response.text))
+
+        return G_original, G_seir, df_status, df_top10
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Erro ao baixar os arquivos: {e}")
+    except nx.NetworkXError as e:
+        raise Exception(f"Erro ao processar os arquivos GraphML: {e}")
+    except pd.errors.ParserError as e:
+        raise Exception(f"Erro ao processar os arquivos CSV: {e}")
 
 try:
     G_original, G_seir, df_status, df_top10 = grafos_e_dados()
@@ -25,11 +60,24 @@ except Exception as e:
     st.error(f"Erro ao carregar os dados: {e}")
     st.stop()
 
-def grafo_pyvis(G, height=600, width="100%"):
-    net = Network(height=f"{height}px", width=width, notebook=False)
-    net.from_nx(G)
+def grafo_pyvis(G, height=750, width="100%", color_map=None, node_sizes=None, node_labels=None):
+    net = Network(height=f"{height}px", width=width, bgcolor="#FFFFFF", font_color="black")
+    
+    # Adicionar nós com atributos personalizados
+    for node, data in G.nodes(data=True):
+        color = color_map.get(data.get('status_label', ''), '#999999') if color_map else '#C6E5B1'
+        size = node_sizes.get(node, 10) if node_sizes else 10
+        label = node_labels.get(node, str(node)) if node_labels else str(node)
+        title = f"<b>{label}</b><br>Status: {data.get('status_label', 'Desconhecido')}"
+        net.add_node(node, label=label, color=color, title=title, size=size)
+
+    # Adicionar arestas
+    for source, target in G.edges():
+        net.add_edge(source, target)
+
+    # Configurações de física
     net.set_options("""
-    var options = {
+    {
       "physics": {
         "barnesHut": {
           "gravitationalConstant": -8000,
@@ -37,66 +85,146 @@ def grafo_pyvis(G, height=600, width="100%"):
           "springConstant": 0.001
         },
         "minVelocity": 0.75
+      },
+      "nodes": {
+        "font": {
+          "size": 14
+        }
       }
     }
     """)
-    
-    # Gerar HTML em memória e injetar direto
+
+    # Gerar HTML em memória
     html_str = net.generate_html()
-    st.components.v1.html(html_str, height=height+50, width=width)
+    components.html(html_str, height=height+50)
 
+# Calcular métricas de centralidade
+def calcular_centralidades(G):
+    degree_centrality = nx.degree_centrality(G)
+    try:
+        betweenness_centrality = nx.betweenness_centrality(G)
+    except:
+        betweenness_centrality = {n: 0 for n in G.nodes}
+    try:
+        closeness_centrality = nx.closeness_centrality(G)
+    except:
+        closeness_centrality = {n: 0 for n in G.nodes}
+    try:
+        eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
+    except nx.PowerIterationFailedConvergence:
+        eigenvector_centrality = {n: 0 for n in G.nodes}
+    
+    return {
+        "Degree Centrality": degree_centrality,
+        "Betweenness Centrality": betweenness_centrality,
+        "Closeness Centrality": closeness_centrality,
+        "Eigenvector Centrality": eigenvector_centrality
+    }
+
+# Exibir métricas do grafo original
 st.header("Grafo Original")
-st.write(f"Número de nós: {G_original.number_of_nodes()}")
-st.write(f"Número de arestas: {G_original.number_of_edges()}")
-st.write(f"Densidade do grafo: {nx.density(G_original):.6f}")
-st.write(f"Grau médio do grafo: {nx.average_clustering(G_original):.6f}")
-grafo_pyvis(G_original)
+st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
+st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
+st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
+st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_original):.2f}")
+st.markdown(f"**Coeficiente de Clustering**: {nx.average_clustering(G_original):.2f}")
+st.markdown(f"**Número de Componentes Conectados**: {len(list(nx.connected_components(G_original)))}")
 
-st.header("Grafo após simulação SEIR")
-st.write(f"Número de nós: {G_seir.number_of_nodes()}")
-st.write(f"Número de arestas: {G_seir.number_of_edges()}")
-st.write(f"Densidade do grafo: {nx.density(G_seir):.6f}")
-st.write(f"Grau médio do grafo: {nx.average_clustering(G_seir):.6f}")
+# Histograma de graus
+st.subheader("Distribuição do Grau dos Nós")
+degree_sequence = [d for n, d in G_original.degree()]
+fig, ax = plt.subplots()
+ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
+ax.set_title("Distribuição de Grau dos Nós")
+ax.set_xlabel("Grau")
+ax.set_ylabel("Quantidade de Nós")
+st.pyplot(fig)
 
+# Centralidades do grafo original
+centralidades = calcular_centralidades(G_original)
+st.subheader("Ranking de Centralidades (Grafo Original)")
+metrica = st.selectbox("Escolha a métrica de centralidade:", list(centralidades.keys()), key="centralidade_original")
+top_k = 10
+ranking = sorted(centralidades[metrica].items(), key=lambda x: x[1], reverse=True)[:top_k]
+st.markdown(f"**Top {top_k} Nós por {metrica}:**")
+for i, (node, valor) in enumerate(ranking, 1):
+    st.markdown(f"{i}. **Nó {node}** — {valor:.4f}")
+
+# Visualizar grafo original
+node_sizes = {n: 10 + 50 * centralidades["Degree Centrality"][n] for n in G_original.nodes()}
+node_labels = {n: f"Nó {n}" for n in G_original.nodes()}
+grafo_pyvis(G_original, color_map=None, node_sizes=node_sizes, node_labels=node_labels)
+
+# Exibir métricas do grafo SEIR
+st.header("Grafo após Simulação SEIR")
+st.markdown(f"**Nós**: {G_seir.number_of_nodes()}")
+st.markdown(f"**Arestas**: {G_seir.number_of_edges()}")
+st.markdown(f"**Densidade**: {nx.density(G_seir):.2f}")
+st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_seir):.2f}")
+st.markdown(f"**Coeficiente de Clustering**: {nx.average_clustering(G_seir):.2f}")
+st.markdown(f"**Número de Componentes Conectados**: {len(list(nx.connected_components(G_seir)))}")
+
+# Histograma de graus (SEIR)
+st.subheader("Distribuição do Grau dos Nós (SEIR)")
+degree_sequence_seir = [d for n, d in G_seir.degree()]
+fig, ax = plt.subplots()
+ax.hist(degree_sequence_seir, bins=range(1, max(degree_sequence_seir)+2), color='skyblue', edgecolor='black')
+ax.set_title("Distribuição de Grau dos Nós (SEIR)")
+ax.set_xlabel("Grau")
+ax.set_ylabel("Quantidade de Nós")
+st.pyplot(fig)
+
+# Contagem de estados
 status_cont = df_status['status_label'].value_counts()
-st.subheader("Quantidade por estado:")
+st.subheader("Quantidade por Estado:")
 st.table(status_cont)
 
+# Centralidades do grafo SEIR
+centralidades_seir = calcular_centralidades(G_seir)
+st.subheader("Ranking de Centralidades (Grafo SEIR)")
+metrica_seir = st.selectbox("Escolha a métrica de centralidade:", list(centralidades_seir.keys()), key="centralidade_seir")
+ranking_seir = sorted(centralidades_seir[metrica_seir].items(), key=lambda x: x[1], reverse=True)[:top_k]
+st.markdown(f"**Top {top_k} Nós por {metrica_seir}:**")
+for i, (node, valor) in enumerate(ranking_seir, 1):
+    st.markdown(f"{i}. **Nó {node}** — {valor:.4f}")
+
+# Configurar cores para o grafo SEIR
 color_map = {'Suscetível': '#669BBC', 'Exposto': '#F4A261', 'Infectado': '#C1121F', 'Removido': '#4A5759'}
-colors = []
 for node in G_seir.nodes():
     status_label = df_status.loc[df_status['Node'] == int(node), 'status_label'].values
     if len(status_label) > 0:
-        colors.append(color_map.get(status_label[0], '#999999'))
+        G_seir.nodes[node]['status_label'] = status_label[0]
     else:
-        colors.append('#999999')
+        G_seir.nodes[node]['status_label'] = 'Desconhecido'
 
-for i, node in enumerate(G_seir.nodes()):
-    G_seir.nodes[node]['color'] = colors[i]
+node_sizes_seir = {n: 10 + 50 * centralidades_seir["Degree Centrality"][n] for n in G_seir.nodes()}
+node_labels_seir = {n: f"Nó {n}" for n in G_seir.nodes()}
+grafo_pyvis(G_seir, color_map=color_map, node_sizes=node_sizes_seir, node_labels=node_labels_seir)
 
-grafo_pyvis(G_seir)
-
-st.header("Top 10 nós mais infectados")
+# Top 10 nós mais infectados
+st.header("Top 10 Nós Mais Infectados")
 st.table(df_top10)
 
-st.subheader("Grafo com possíveis nós")
+# Grafo com nós em risco
+st.subheader("Grafo com Possíveis Nós em Risco")
 color_risco_map = {'Infectado': '#C1121F', 'Removido': '#4A5759', 'Suscetível': '#669BBC', 'Em risco': 'purple', 'Exposto': '#F4A261'}
 G_risco = G_seir.copy()
 top10_risco = df_top10['Node'].astype(int).tolist()
 for node in G_risco.nodes():
     if node in top10_risco:
-        G_risco.nodes[node]['color'] = color_risco_map['Em risco']
+        G_risco.nodes[node]['status_label'] = 'Em risco'
     else:
         status_label = df_status.loc[df_status['Node'] == int(node), 'status_label'].values
         if len(status_label) > 0:
-            G_risco.nodes[node]['color'] = color_risco_map.get(status_label[0], '#999999')
+            G_risco.nodes[node]['status_label'] = status_label[0]
         else:
-            G_risco.nodes[node]['color'] = '#999999'
+            G_risco.nodes[node]['status_label'] = 'Desconhecido'
 
-grafo_pyvis(G_risco)
+grafo_pyvis(G_risco, color_map=color_risco_map, node_sizes=node_sizes_seir, node_labels=node_labels_seir)
 
+# Legenda
 st.markdown("""
----  
+---
 **Legenda das cores no grafo:**  
 - Vermelho: Infectado  
 - Verde escuro: Removido  
