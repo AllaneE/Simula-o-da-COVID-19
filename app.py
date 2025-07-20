@@ -54,7 +54,7 @@ def load_original_graph():
 def load_seir_graph():
     G_seir = nx.read_graphml('grafo_seir.graphml')
     status_df = pd.read_csv('status.csv')
-    status_dict = dict(zip(status_df['Node'], status_df['status_label']))
+    status_dict = dict(zip(status_df['Node'], status_df['Status']))
     return G_seir, status_dict
 
 # Função para carregar dados de link prediction
