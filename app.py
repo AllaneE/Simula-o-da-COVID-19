@@ -142,9 +142,6 @@ def visualize_original_graph():
     sample_nodes = [node for node in sample_nodes if node in G.nodes()]
     H = G.subgraph(sample_nodes)
     
-    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = calculate_graph_metrics(G, "Grafo Original")
-    with open("grafo_original_metrics.md", "w") as f:
-        f.write(metrics)
     st.subheader("Métricas do Grafo Original")
     st.markdown(f"- Número de nós: {num_nodes}")
     st.markdown(f"- Número de arestas: {num_edges}")
@@ -153,15 +150,6 @@ def visualize_original_graph():
     st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
     st.markdown(f"- Assortatividade: {assortativity:.2f}")
     st.markdown(f"- Número de componentes conectados: {connected_components}")
-    
-    st.subheader("Distribuição do Grau dos Nós")
-    degree_sequence = [d for n, d in H.degree()]
-    fig, ax = plt.subplots()
-    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
-    ax.set_title("Distribuição de Grau dos Nós")
-    ax.set_xlabel("Grau")
-    ax.set_ylabel("Quantidade de Nós")
-    st.pyplot(fig)
     
     node_colors = {node: color_map[0] for node in H.nodes()}
     st.subheader("Visualização Estática do Grafo Original")
