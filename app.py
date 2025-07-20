@@ -1,122 +1,139 @@
-
 import streamlit as st
-import pandas as pd
-import networkx as nx
 from pyvis.network import Network
-import streamlit.components.v1 as components
+import networkx as nx
+import pandas as pd
+import os
+from streamlit.components.v1 import html
 
-# Configuração do Streamlit
-st.set_page_config(page_title="Simulação SEID - COVID-19", layout="wide")
+# Configuração da página do Streamlit
+st.set_page_config(page_title="Simulação de COVID-19 com Modelo SEID", layout="wide")
 
-st.title("Simulação Epidemia SEID - COVID-19")
+# Função para carregar o grafo a partir do arquivo
+def load_graph(file_path, file_type='txt'):
+    if file_type == 'txt':
+        G = nx.read_edgelist(file_path, nodetype=int)
+    elif file_type == 'graphml':
+        G = nx.read_graphml(file_path)
+    return G
+
+# Função para criar grafo interativo com pyvis
+def create_pyvis_graph(G, title, state_col=None, highlight_edges=None, height="500px"):
+    net = Network(height=height, width="100%", notebook=False, directed=False)
+    net.set_options('''
+    {
+        "nodes": {
+            "font": {
+                "size": 10
+            }
+        },
+        "edges": {
+            "color": {
+                "inherit": false
+            },
+            "smooth": false
+        },
+        "physics": {
+            "barnesHut": {
+                "gravitationalConstant": -8000,
+                "springLength": 100
+            }
+        }
+    }
+    ''')
+
+    state_colors = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
+
+    # Adicionar nós
+    for node in G.nodes():
+        color = state_colors[G.nodes[node][state_col]] if state_col and state_col in G.nodes[node] else 'blue'
+        net.add_node(node, label=str(node), color=color, size=10)
+
+    # Adicionar arestas
+    for u, v in G.edges():
+        color = 'purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray'
+        net.add_edge(u, v, color=color)
+
+    # Salvar grafo como HTML
+    html_file = f"{title.replace(' ', '_')}.html"
+    net.save_graph(html_file)
+    return html_file
+
+# Interface do Streamlit
+st.title("Simulação de COVID-19 com Modelo SEID")
+
+# Explicação do projeto (baseado no README.md)
+st.header("Sobre o Projeto")
 st.markdown("""
-Simulação da propagação do COVID-19 com modelo SEID em uma rede social (dataset Facebook).  
-Exibe métricas de rede e previsão de novos contatos em risco via link prediction.
+Este projeto simula a propagação da COVID-19 em uma rede de contatos utilizando o modelo epidemiológico SEID (Suscetível, Exposto, Infectado, Morto). 
+O grafo inicial é baseado em uma rede social do Facebook (`facebook_combined.txt`), onde os nós representam indivíduos e as arestas representam interações. 
+A simulação modela a evolução dos estados dos nós ao longo do tempo, considerando taxas de infecção, exposição, recuperação e mortalidade. 
+Além disso, é realizada uma predição de links para identificar possíveis novos contatos que podem facilitar a propagação da doença, destacados em roxo no grafo final.
 """)
 
-# Carregar dados
-try:
-    G_original = nx.read_graphml("grafo_original.graphml", node_type=int)
-    G_seid = nx.read_graphml("grafo_seir.graphml", node_type=int)
-    df_status = pd.read_csv("status.csv")
-    df_top10 = pd.read_csv("top10.csv")
-except Exception as e:
-    st.error(f"Erro ao carregar os dados: {e}")
-    st.stop()
-
-# Grafo original
+# Carregar e exibir grafo original
 st.header("Grafo Original")
-st.write(f"Nós: {G_original.number_of_nodes()}")
-st.write(f"Arestas: {G_original.number_of_edges()}")
-st.write(f"Densidade: {nx.density(G_original):.6f}")
+try:
+    G_original = load_graph("facebook_combined.txt", file_type='txt')
+    num_nodes = G_original.number_of_nodes()
+    num_edges = G_original.number_of_edges()
+    st.write(f"Número de nós: {num_nodes}")
+    st.write(f"Número de arestas: {num_edges}")
+    html_file = create_pyvis_graph(G_original, "Grafo_Original")
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
+except FileNotFoundError:
+    st.error("Arquivo 'facebook_combined.txt' não encontrado.")
 
-net = Network(height="600px", width="100%", bgcolor="#FFFFFF", font_color="black", cdn_resources='remote')
-for node in G_original.nodes():
-    net.add_node(int(node), label=f"Nó {node}", color="#1E90FF", title="Status: Desconhecido", size=10)
-for source, target in G_original.edges():
-    net.add_edge(int(source), int(target), color="#808080")
-net.set_options('''
-{
-    "physics": {"enabled": false},
-    "layout": {"randomSeed": 42},
-    "edges": {"color": {"inherit": false}, "smooth": false}
-}
-''')
-components.html(net.generate_html(), height=650)
-
-# Grafo após simulação SEID
+# Carregar e exibir grafo após simulação SEID
 st.header("Grafo Após Simulação SEID")
-for node in G_seid.nodes():
-    status = df_status.loc[df_status['Node'] == int(node), 'status_label'].values
-    G_seid.nodes[node]['status'] = status[0] if len(status) > 0 else 'Desconhecido'
+try:
+    G_seid = load_graph("grafo_seir.graphml", file_type='graphml')
+    # Carregar estados dos nós a partir de status.csv
+    status_df = pd.read_csv("status.csv")
+    state_counts = status_df['status_label'].value_counts().to_dict()
 
-st.write(f"Nós: {G_seid.number_of_nodes()}")
-st.write(f"Arestas: {G_seid.number_of_edges()}")
-st.write(f"Densidade: {nx.density(G_seid):.6f}")
+    # Atribuir estados aos nós
+    for _, row in status_df.iterrows():
+        G_seid.nodes[row['node']]['status_label'] = row['status']
 
-st.subheader("Quantidade por Estado")
-st.table(df_status['status_label'].value_counts())
+    st.write(f"Número de nós: {G_seid.number_of_nodes()}")
+    st.write(f"Número de arestas: {G_seid.number_of_edges()}")
+    st.write("Distribuição dos estados:")
+    st.write(f"Suscetíveis: {state_counts.get('S', 0)}")
+    st.write(f"Expostos: {state_counts.get('E', 0)}")
+    st.write(f"Infectados: {state_counts.get('I', 0)}")
+    st.write(f"Mortos: {state_counts.get('D', 0)}")
+    html_file = create_pyvis_graph(G_seid, "Grafo_Apos_Simulacao", state_col='status')
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
+except FileNotFoundError:
+    st.error("Arquivos 'grafo_seir.graphml' ou 'status.csv' não encontrados.")
 
-net = Network(height="600px", width="100%", bgcolor="#FFFFFF", font_color="black", cdn_resources='remote')
-color_map = {'Suscetível': '#669BBC', 'Exposto': '#F4A261', 'Infectado': '#C1121F', 'Removido': '#4A5759'}
-for node in G_seid.nodes():
-    status = G_seid.nodes[node].get('status', 'Desconhecido')
-    color = color_map.get(status, '#999999')
-    net.add_node(int(node), label=f"Nó {node}", color=color, title=f"Status: {status}", size=10)
-for source, target in G_seid.edges():
-    net.add_edge(int(source), int(target), color="#808080")
-net.set_options('''
-{
-    "physics": {"enabled": false},
-    "layout": {"randomSeed": 42},
-    "edges": {"color": {"inherit": false}, "smooth": false}
-}
-''')
-components.html(net.generate_html(), height=650)
-
-# Top 10 links previstos
+# Exibir tabela de predição de links
 st.header("Predição de Links")
-st.subheader("Top 10 Links Previstos")
-st.table(df_top10)
+try:
+    top10_df = pd.read_csv("top10.csv")
+    st.write("Tabela com os Top 10 Links Previstos:")
+    st.table(top10_df)
 
-# Grafo com links previstos e nós de risco
-st.header("Grafo com Links Previstos")
-net = Network(height="600px", width="100%", bgcolor="#FFFFFF", font_color="black", cdn_resources='remote')
-top_5_nodes = df_top10['Node'].astype(int).tolist()[:5]  # Top 5 nós para destaque
-highlight_edges = [(int(row['node1']), int(row['node2'])) for _, row in df_top10.iterrows()]
-
-for node in G_seid.nodes():
-    status = G_seid.nodes[node].get('status', 'Desconhecido')
-    if node in top_5_nodes:
-        color = '#800080'  # Roxo para nós em risco (top 5)
-        title = "Status: Em risco (Link Prediction)"
-    else:
-        color = color_map.get(status, '#999999')
-        title = f"Status: {status}"
-    net.add_node(int(node), label=f"Nó {node}", color=color, title=title, size=10)
-
-for source, target in G_seid.edges():
-    net.add_edge(int(source), int(target), color="#808080")
-for node1, node2 in highlight_edges:
-    if not G_seid.has_edge(node1, node2):
-        net.add_edge(int(node1), int(node2), color="#800080")  # Arestas roxas para links previstos
-
-net.set_options('''
-{
-    "physics": {"enabled": false},
-    "layout": {"randomSeed": 42},
-    "edges": {"color": {"inherit": false}, "smooth": false}
-}
-''')
-components.html(net.generate_html(), height=650)
+    # Grafo com predição de links
+    st.header("Grafo com Predição de Links")
+    highlight_edges = [(row['node1'], row['node2']) for _, row in top10_df.iterrows()]
+    html_file = create_pyvis_graph(G_seid, "Grafo_com_Links_Previstos", state_col='status', highlight_edges=highlight_edges)
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
+except FileNotFoundError:
+    st.error("Arquivo 'top10.csv' não encontrado.")
 
 # Legenda
 st.markdown("""
 **Legenda das Cores:**  
-- Azul Claro (#669BBC): Suscetível  
-- Amarelo (#F4A261): Exposto  
-- Vermelho (#C1121F): Infectado  
-- Verde Escuro (#4A5759): Removido  
-- Azul (#1E90FF): Desconhecido (grafo original)  
-- Roxo (#800080): Nós em risco (top 5) e Links Previstos
+- Vermelho: Infectado  
+- Verde Escuro: Removido  
+- Azul Claro: Suscetível  
+- Amarelo: Exposto  
+- Roxo: Nós em risco (Link Prediction)
 """)
