@@ -80,7 +80,7 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     var options = {
       "nodes": {
         "shape": "dot",
-        "size": 10
+        "size": 20
       },
       "edges": {
         "color": {
