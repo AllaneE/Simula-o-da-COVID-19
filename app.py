@@ -1,8 +1,9 @@
 import streamlit as st
+from pyvis.network import Network
 import networkx as nx
-import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from streamlit.components.v1 import html
 
 # Configuração da página do Streamlit
 st.set_page_config(page_title="Simulação de COVID-19 com Modelo SEID", layout="wide")
@@ -15,22 +16,47 @@ def load_graph(file_path, file_type='txt'):
         G = nx.read_graphml(file_path)
     return G
 
-# Função para plotar o grafo com cores baseadas no estado
-def plot_graph(G, title, state_col=None, highlight_edges=None):
-    plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(G)
-    
-    if state_col:
-        state_colors = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
-        colors = [state_colors[G.nodes[node][state_col]] for node in G.nodes()]
-    else:
-        colors = 'blue'  # Cor padrão para grafo original
-    
-    edge_colors = ['purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray' for u, v in G.edges()]
-    
-    nx.draw(G, pos, node_color=colors, edge_color=edge_colors, with_labels=False, node_size=100)
-    plt.title(title)
-    return plt
+# Função para criar grafo interativo com pyvis
+def create_pyvis_graph(G, title, state_col=None, highlight_edges=None, height="500px"):
+    net = Network(height=height, width="100%", notebook=False, directed=False)
+    net.set_options('''
+    {
+        "nodes": {
+            "font": {
+                "size": 10
+            }
+        },
+        "edges": {
+            "color": {
+                "inherit": false
+            },
+            "smooth": false
+        },
+        "physics": {
+            "barnesHut": {
+                "gravitationalConstant": -8000,
+                "springLength": 100
+            }
+        }
+    }
+    ''')
+
+    state_colors = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
+
+    # Adicionar nós
+    for node in G.nodes():
+        color = state_colors[G.nodes[node][state_col]] if state_col and state_col in G.nodes[node] else 'blue'
+        net.add_node(node, label=str(node), color=color, size=10)
+
+    # Adicionar arestas
+    for u, v in G.edges():
+        color = 'purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray'
+        net.add_edge(u, v, color=color)
+
+    # Salvar grafo como HTML
+    html_file = f"{title.replace(' ', '_')}.html"
+    net.save_graph(html_file)
+    return html_file
 
 # Interface do Streamlit
 st.title("Simulação de COVID-19 com Modelo SEID")
@@ -52,8 +78,10 @@ try:
     num_edges = G_original.number_of_edges()
     st.write(f"Número de nós: {num_nodes}")
     st.write(f"Número de arestas: {num_edges}")
-    fig = plot_graph(G_original, "Grafo Original (Rede Social do Facebook)")
-    st.pyplot(fig)
+    html_file = create_pyvis_graph(G_original, "Grafo_Original")
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
 except FileNotFoundError:
     st.error("Arquivo 'facebook_combined.txt' não encontrado.")
 
@@ -76,8 +104,10 @@ try:
     st.write(f"Expostos: {state_counts.get('E', 0)}")
     st.write(f"Infectados: {state_counts.get('I', 0)}")
     st.write(f"Mortos: {state_counts.get('D', 0)}")
-    fig = plot_graph(G_seid, "Grafo Após Simulação (Verde: Suscetível, Amarelo: Exposto, Vermelho: Infectado, Preto: Morto)", state_col='status')
-    st.pyplot(fig)
+    html_file = create_pyvis_graph(G_seid, "Grafo_Apos_Simulacao", state_col='status')
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
 except FileNotFoundError:
     st.error("Arquivos 'grafo_seir.graphml' ou 'status.csv' não encontrados.")
 
@@ -91,8 +121,10 @@ try:
     # Grafo com predição de links
     st.header("Grafo com Predição de Links")
     highlight_edges = [(row['node1'], row['node2']) for _, row in top10_df.iterrows()]
-    fig = plot_graph(G_seid, "Grafo com Links Previstos (Arestas Roxas: Links Previstos)", state_col='status', highlight_edges=highlight_edges)
-    st.pyplot(fig)
+    html_file = create_pyvis_graph(G_seid, "Grafo_com_Links_Previstos", state_col='status', highlight_edges=highlight_edges)
+    with open(html_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    html(html_content, height=500)
 except FileNotFoundError:
     st.error("Arquivo 'top10.csv' não encontrado.")
 
