@@ -12,21 +12,22 @@ color_map = {0: '#669BBC', 1: '#F4A261', 2: '#C1121F', 3: '#4A5759'}
 
 # Função para calcular métricas do grafo
 def calculate_graph_metrics(G, graph_name):
-    num_nodes = G.number_of_nodes()
-    num_edges = G.number_of_edges()
-    avg_degree = sum(dict(G.degree()).values()) / num_nodes
-    density = nx.density(G)
     try:
-        avg_clustering = nx.average_clustering(G)
-    except ZeroDivisionError:
-        avg_clustering = 0.0
-    try:
-        assortativity = nx.degree_assortativity_coefficient(G)
-    except ZeroDivisionError:
-        assortativity = 0.0
-    connected_components = len(list(nx.connected_components(G)))
-    
-    metrics = f"""# Métricas do {graph_name}
+        num_nodes = G.number_of_nodes()
+        num_edges = G.number_of_edges()
+        avg_degree = sum(dict(G.degree()).values()) / num_nodes if num_nodes > 0 else 0.0
+        density = nx.density(G)
+        try:
+            avg_clustering = nx.average_clustering(G)
+        except ZeroDivisionError:
+            avg_clustering = 0.0
+        try:
+            assortativity = nx.degree_assortativity_coefficient(G)
+        except ZeroDivisionError:
+            assortativity = 0.0
+        connected_components = len(list(nx.connected_components(G)))
+        
+        metrics = f"""# Métricas do {graph_name}
 - Número de nós: {num_nodes}
 - Número de arestas: {num_edges}
 - Grau médio: {avg_degree:.2f}
@@ -35,7 +36,10 @@ def calculate_graph_metrics(G, graph_name):
 - Assortatividade: {assortativity:.2f}
 - Número de componentes conectados: {connected_components}
 """
-    return metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components
+        return metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components
+    except Exception as e:
+        st.error(f"Erro ao calcular métricas para {graph_name}: {str(e)}")
+        return None, 0, 0, 0.0, 0.0, 0.0, 0.0, 0
 
 # Função para carregar o grafo original
 def load_original_graph():
@@ -43,30 +47,54 @@ def load_original_graph():
         G = nx.read_graphml('grafo_original.graphml')
         st.write("Grafo original carregado de grafo_original.graphml")
     except FileNotFoundError:
-        G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
-        st.write("Grafo original carregado de facebook_combined.txt")
+        try:
+            G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
+            st.write("Grafo original carregado de facebook_combined.txt")
+        except FileNotFoundError:
+            st.error("Erro: Arquivos grafo_original.graphml e facebook_combined.txt não encontrados.")
+            return None
+    except Exception as e:
+        st.error(f"Erro ao carregar grafo original: {str(e)}")
+        return None
     st.write(f"Tipos dos nós: {type(list(G.nodes())[0])}")
     st.write(f"Exemplo de nós: {list(G.nodes())[:5]}")
     return G
 
 # Função para carregar o grafo SEIR e os estados
 def load_seir_graph():
-    G_seir = nx.read_graphml('grafo_seir.graphml')
-    status_df = pd.read_csv('status.csv')
-    st.write(f"Nós em status.csv: {status_df['Node'].tolist()[:5]}")
-    st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
-    status_dict = dict(zip(status_df['Node'], status_df['status_label']))
-    return G_seir, status_dict
+    try:
+        G_seir = nx.read_graphml('grafo_seir.graphml')
+        status_df = pd.read_csv('status.csv')
+        st.write(f"Nós em status.csv: {status_df['Node'].tolist()[:5]}")
+        st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
+        status_dict = dict(zip(status_df['Node'], status_df['status_label']))
+        return G_seir, status_dict
+    except FileNotFoundError:
+        st.error("Erro: Arquivo grafo_seir.graphml ou status.csv não encontrado.")
+        return None, {}
+    except Exception as e:
+        st.error(f"Erro ao carregar grafo SEIR ou status.csv: {str(e)}")
+        return None, {}
 
 # Função para carregar dados de link prediction
 def load_link_prediction_data():
-    top10_df = pd.read_csv('top10.csv')
-    top_risk_nodes = set(top10_df['Node'][:5])
-    st.write(f"Top 5 nós de risco: {top_risk_nodes}")
-    return top_risk_nodes, top10_df
+    try:
+        top10_df = pd.read_csv('top10.csv')
+        top_risk_nodes = set(top10_df['Node'][:5])
+        st.write(f"Top 5 nós de risco: {top_risk_nodes}")
+        return top_risk_nodes, top10_df
+    except FileNotFoundError:
+        st.error("Erro: Arquivo top10.csv não encontrado.")
+        return set(), pd.DataFrame()
+    except Exception as e:
+        st.error(f"Erro ao carregar top10.csv: {str(e)}")
+        return set(), pd.DataFrame()
 
 # Função para criar visualização com PyVis
 def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
+    if G is None:
+        st.error("Erro: Grafo não foi carregado corretamente.")
+        return
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
     net.from_nx(G)
     
@@ -92,7 +120,7 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     }
     """)
     
-    if top10_df is not None:
+    if top10_df is not None and not top10_df.empty:
         html_table = top10_df.head(10).to_html(index=False, classes="table table-bordered table-dark")
         net.html = f"""
         <html>
@@ -123,6 +151,9 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
 
 # Função para criar visualização estática com Matplotlib
 def create_matplotlib_graph(G, node_colors, title):
+    if G is None:
+        st.error("Erro: Grafo não foi carregado para visualização estática.")
+        return
     plt.figure(figsize=(10, 8))
     pos = nx.spring_layout(G, seed=42)
     nx.draw(G, pos, node_color=[node_colors.get(node, '#669BBC') for node in G.nodes()], 
@@ -138,10 +169,22 @@ def visualize_original_graph():
     """)
     
     G = load_original_graph()
+    if G is None:
+        st.error("Não foi possível car será possível prosseguir com a visualização.")
+        return
+    
     sample_nodes = list(G.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G.nodes()]
     H = G.subgraph(sample_nodes)
     
+    metrics_data = calculate_graph_metrics(G, "Grafo Original")
+    if metrics_data[0] is None:
+        st.error("Não foi possível calcular as métricas do grafo original.")
+        return
+    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = metrics_data
+    
+    with open("grafo_original_metrics.md", "w") as f:
+        f.write(metrics)
     st.subheader("Métricas do Grafo Original")
     st.markdown(f"- Número de nós: {num_nodes}")
     st.markdown(f"- Número de arestas: {num_edges}")
@@ -150,6 +193,15 @@ def visualize_original_graph():
     st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
     st.markdown(f"- Assortatividade: {assortativity:.2f}")
     st.markdown(f"- Número de componentes conectados: {connected_components}")
+    
+    st.subheader("Distribuição do Grau dos Nós")
+    degree_sequence = [d for n, d in H.degree()]
+    fig, ax = plt.subplots()
+    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
+    ax.set_title("Distribuição de Grau dos Nós")
+    ax.set_xlabel("Grau")
+    ax.set_ylabel("Quantidade de Nós")
+    st.pyplot(fig)
     
     node_colors = {node: color_map[0] for node in H.nodes()}
     st.subheader("Visualização Estática do Grafo Original")
@@ -161,9 +213,22 @@ def visualize_original_graph():
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
     G_seir, status_dict = load_seir_graph()
+    if G_seir is None:
+        st.error("Não foi possível carregar o grafo SEIR. Verifique os arquivos de entrada.")
+        return
+    
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
+    
+    metrics_data = calculate_graph_metrics(G_seir, "Grafo SEIR")
+    if metrics_data[0] is None:
+        st.error("Não foi possível calcular as métricas do grafo SEIR.")
+        return
+    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = metrics_data
+    
+    with open("grafo_seir_metrics.md", "w") as f:
+        f.write(metrics)
     st.subheader("Métricas do Grafo SEIR")
     st.markdown(f"- Número de nós: {num_nodes}")
     st.markdown(f"- Número de arestas: {num_edges}")
@@ -192,7 +257,15 @@ def visualize_seir_graph():
 def visualize_link_prediction_graph():
     st.title("Previsão de Próximos Infectados com Link Prediction")
     G_seir, status_dict = load_seir_graph()
+    if G_seir is None:
+        st.error("Não foi possível carregar o grafo SEIR para link prediction. Verifique os arquivos de entrada.")
+        return
+    
     top_risk_nodes, top10_df = load_link_prediction_data()
+    if top10_df.empty:
+        st.error("Não foi possível carregar os dados de link prediction.")
+        return
+    
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
