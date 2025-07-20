@@ -65,17 +65,21 @@ def load_link_prediction_data():
 
 
 # Função para criar visualização com PyVis
-def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
+# Função para criar visualização com PyVis
+def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None, edge_color='#808080'):
     if G is None:
         st.error("Erro: Grafo não foi carregado corretamente.")
         return
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
-    net.from_nx(G)
     
-    for node in net.nodes:
-        node_id = int(node['id'])
-        node['color'] = node_colors.get(node_id, '#669BBC')
-        node['title'] = f"Nó {node_id}"
+    # Adicionar nós
+    for node in G.nodes():
+        node_id = int(node)
+        net.add_node(node_id, color=node_colors.get(node_id, '#669BBC'), title=f"Nó {node_id}")
+    
+    # Adicionar arestas com cor personalizada
+    for source, target in G.edges():
+        net.add_edge(source, target, color=edge_color)
     
     net.set_options("""
     var options = {
