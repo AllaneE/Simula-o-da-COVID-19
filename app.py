@@ -29,6 +29,9 @@ st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
 
+net.show("grafo_original.html")
+st.markdown("Abra o grafo interativo gerado manualmente [aqui](grafo_original.html)")
+
 # Visualizar grafo original
 net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
 for node, data in G_original.nodes(data=True):
