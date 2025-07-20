@@ -98,29 +98,6 @@ def grafo_pyvis(G, height=750, width="100%", color_map=None, node_sizes=None, no
     html_str = net.generate_html()
     components.html(html_str, height=height+50)
 
-# Calcular métricas de centralidade
-def calcular_centralidades(G):
-    degree_centrality = nx.degree_centrality(G)
-    try:
-        betweenness_centrality = nx.betweenness_centrality(G)
-    except:
-        betweenness_centrality = {n: 0 for n in G.nodes}
-    try:
-        closeness_centrality = nx.closeness_centrality(G)
-    except:
-        closeness_centrality = {n: 0 for n in G.nodes}
-    try:
-        eigenvector_centrality = nx.eigenvector_centrality(G, max_iter=1000)
-    except nx.PowerIterationFailedConvergence:
-        eigenvector_centrality = {n: 0 for n in G.nodes}
-    
-    return {
-        "Degree Centrality": degree_centrality,
-        "Betweenness Centrality": betweenness_centrality,
-        "Closeness Centrality": closeness_centrality,
-        "Eigenvector Centrality": eigenvector_centrality
-    }
-
 # Exibir métricas do grafo original
 st.header("Grafo Original")
 st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
@@ -128,27 +105,6 @@ st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
 st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_original):.2f}")
 st.markdown(f"**Coeficiente de Clustering**: {nx.average_clustering(G_original):.2f}")
-st.markdown(f"**Número de Componentes Conectados**: {len(list(nx.connected_components(G_original)))}")
-
-# Histograma de graus
-st.subheader("Distribuição do Grau dos Nós")
-degree_sequence = [d for n, d in G_original.degree()]
-fig, ax = plt.subplots()
-ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
-ax.set_title("Distribuição de Grau dos Nós")
-ax.set_xlabel("Grau")
-ax.set_ylabel("Quantidade de Nós")
-st.pyplot(fig)
-
-# Centralidades do grafo original
-centralidades = calcular_centralidades(G_original)
-st.subheader("Ranking de Centralidades (Grafo Original)")
-metrica = st.selectbox("Escolha a métrica de centralidade:", list(centralidades.keys()), key="centralidade_original")
-top_k = 10
-ranking = sorted(centralidades[metrica].items(), key=lambda x: x[1], reverse=True)[:top_k]
-st.markdown(f"**Top {top_k} Nós por {metrica}:**")
-for i, (node, valor) in enumerate(ranking, 1):
-    st.markdown(f"{i}. **Nó {node}** — {valor:.4f}")
 
 # Visualizar grafo original
 node_sizes = {n: 10 + 50 * centralidades["Degree Centrality"][n] for n in G_original.nodes()}
@@ -164,29 +120,10 @@ st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_seir):
 st.markdown(f"**Coeficiente de Clustering**: {nx.average_clustering(G_seir):.2f}")
 st.markdown(f"**Número de Componentes Conectados**: {len(list(nx.connected_components(G_seir)))}")
 
-# Histograma de graus (SEIR)
-st.subheader("Distribuição do Grau dos Nós (SEIR)")
-degree_sequence_seir = [d for n, d in G_seir.degree()]
-fig, ax = plt.subplots()
-ax.hist(degree_sequence_seir, bins=range(1, max(degree_sequence_seir)+2), color='skyblue', edgecolor='black')
-ax.set_title("Distribuição de Grau dos Nós (SEIR)")
-ax.set_xlabel("Grau")
-ax.set_ylabel("Quantidade de Nós")
-st.pyplot(fig)
-
 # Contagem de estados
 status_cont = df_status['status_label'].value_counts()
 st.subheader("Quantidade por Estado:")
 st.table(status_cont)
-
-# Centralidades do grafo SEIR
-centralidades_seir = calcular_centralidades(G_seir)
-st.subheader("Ranking de Centralidades (Grafo SEIR)")
-metrica_seir = st.selectbox("Escolha a métrica de centralidade:", list(centralidades_seir.keys()), key="centralidade_seir")
-ranking_seir = sorted(centralidades_seir[metrica_seir].items(), key=lambda x: x[1], reverse=True)[:top_k]
-st.markdown(f"**Top {top_k} Nós por {metrica_seir}:**")
-for i, (node, valor) in enumerate(ranking_seir, 1):
-    st.markdown(f"{i}. **Nó {node}** — {valor:.4f}")
 
 # Configurar cores para o grafo SEIR
 color_map = {'Suscetível': '#669BBC', 'Exposto': '#F4A261', 'Infectado': '#C1121F', 'Removido': '#4A5759'}
