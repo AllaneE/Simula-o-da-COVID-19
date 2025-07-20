@@ -53,15 +53,15 @@ def load_original_graph():
 def load_seir_graph():
     G_seir = nx.read_graphml('grafo_seir.graphml')
     status_df = pd.read_csv('status.csv')
-    st.write(f"Nós em status.csv: {status_df['node'].tolist()[:5]}")
+    st.write(f"Nós em status.csv: {status_df['Node'].tolist()[:5]}")
     st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
-    status_dict = dict(zip(status_df['node'], status_df['status']))
+    status_dict = dict(zip(status_df['Node'], status_df['status_label']))
     return G_seir, status_dict
 
 # Função para carregar dados de link prediction
 def load_link_prediction_data():
     top10_df = pd.read_csv('top10.csv')
-    top_risk_nodes = set(top10_df['node'][:5])
+    top_risk_nodes = set(top10_df['Node'][:5])
     st.write(f"Top 5 nós de risco: {top_risk_nodes}")
     return top_risk_nodes, top10_df
 
@@ -164,10 +164,6 @@ def visualize_seir_graph():
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
-    
-    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = calculate_graph_metrics(G_seir, "Grafo SEIR")
-    with open("grafo_seir_metrics.md", "w") as f:
-        f.write(metrics)
     st.subheader("Métricas do Grafo SEIR")
     st.markdown(f"- Número de nós: {num_nodes}")
     st.markdown(f"- Número de arestas: {num_edges}")
