@@ -69,8 +69,8 @@ try:
     node_colors = {str(node): color_map[0] for node in G_original.nodes()}
     num_nodes = G_original.number_of_nodes()
     num_edges = G_original.number_of_edges()
-    st.write(f"Nós: {num_nodes}")
-    st.white(f"Arestas: {num_edges}")
+    st.markdown(f"Nós: {num_nodes}")
+    st.markdown(f"Arestas: {num_edges}")
     create_pyvis_graph(G_original, node_colors, "Grafo Original", "grafo_original.html")
     with open("grafo_original.html", "r", encoding="utf-8") as f:
         st.components.v1.html(f.read(), height=800)
@@ -84,8 +84,8 @@ try:
     node_colors = {str(node): color_map[status_dict.get(str(node), 0)] for node in G_seir.nodes()}
     num_nodes = G_seir.number_of_nodes()
     num_edges = G_seir.number_of_edges()
-    st.write(f"Nós: {num_nodes}")
-    st.whitee(f"Arestas: {num_edges}")
+    st.markdown(f"Nós: {num_nodes}")
+    st.markdown(f"Arestas: {num_edges}")
     create_pyvis_graph(G_seir, node_colors, "Rede SEIR", "grafo_seir.html")
     with open("grafo_seir.html", "r", encoding="utf-8") as f:
         st.components.v1.html(f.read(), height=800)
