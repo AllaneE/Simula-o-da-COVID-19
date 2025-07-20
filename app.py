@@ -28,8 +28,6 @@ st.header("Grafo Original")
 st.markdown(f"**Nós**: {G_original.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_original.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_original):.2f}")
-st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_original):.2f}")
-st.markdown(f"**Clustering Médio**: {nx.average_clustering(G_original):.2f}")
 
 # Visualizar grafo original
 net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
@@ -55,9 +53,6 @@ st.header("Grafo após Simulação SEIR")
 st.markdown(f"**Nós**: {G_seir.number_of_nodes()}")
 st.markdown(f"**Arestas**: {G_seir.number_of_edges()}")
 st.markdown(f"**Densidade**: {nx.density(G_seir):.2f}")
-st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_seir):.2f}")
-st.markdown(f"**Clustering Médio**: {nx.average_clustering(G_seir):.2f}")
-st.markdown(f"**Componentes Conectados**: {len(list(nx.connected_components(G_seir)))}")
 
 # Contagem de estados
 st.subheader("Quantidade por Estado")
