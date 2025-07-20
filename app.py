@@ -3,6 +3,8 @@ import pandas as pd
 import networkx as nx
 from pyvis.network import Network
 from collections import defaultdict
+import requests
+from io import StringIO
 
 st.set_page_config(page_title="Projeto Simulação SEIR - COVID-19", layout="wide")
 
@@ -14,22 +16,53 @@ Utilizamos métricas de teoria de redes para analisar o grafo antes e depois da 
 
 @st.cache_data
 def grafos_e_dados():
-  G_original = nx.read_graphml("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/refs/heads/main/grafo_original.graphml")
-  G_seir = nx.read_graphml("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/refs/heads/main/grafo_seir.graphml")
-  df_status = pd.read_csv("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/refs/heads/main/status.csv")
-  df_top10 = pd.read_csv("https://raw.githubusercontent.com/AllaneE/Simula-o-da-COVID-19/refs/heads/main/top10.csv")
-  return G_original, G_seir, df_status, df_top10
+    # URLs corrigidas com codificação do caractere especial
+    urls = {
+        'grafo_original': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_original.graphml',
+        'grafo_seir': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_seir.graphml',
+        'status': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/status.csv',
+        'top10': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/top10.csv'
+    }
+
+    try:
+        # Baixar e carregar grafo_original
+        response = requests.get(urls['grafo_original'])
+        response.raise_for_status()  # Levanta exceção para erros HTTP
+        G_original = nx.read_graphml(StringIO(response.text))
+
+        # Baixar e carregar grafo_seir
+        response = requests.get(urls['grafo_seir'])
+        response.raise_for_status()
+        G_seir = nx.read_graphml(StringIO(response.text))
+
+        # Baixar e carregar status.csv
+        response = requests.get(urls['status'])
+        response.raise_for_status()
+        df_status = pd.read_csv(StringIO(response.text))
+
+        # Baixar e carregar top10.csv
+        response = requests.get(urls['top10'])
+        response.raise_for_status()
+        df_top10 = pd.read_csv(StringIO(response.text))
+
+        return G_original, G_seir, df_status, df_top10
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Erro ao baixar os arquivos: {e}")
+    except nx.NetworkXError as e:
+        raise Exception(f"Erro ao processar os arquivos GraphML: {e}")
+    except pd.errors.ParserError as e:
+        raise Exception(f"Erro ao processar os arquivos CSV: {e}")
 
 try:
-  G_original, G_seir, df_status, df_top10 = grafos_e_dados()
+    G_original, G_seir, df_status, df_top10 = grafos_e_dados()
 except Exception as e:
-  st.error(f"Erro ao carregar os dados: {e}")
-  st.stop()
+    st.error(f"Erro ao carregar os dados: {e}")
+    st.stop()
 
 def grafo_pyvis(G, height=600, width="100%"):
-  net = Network(height=f"{height}px", width=width, notebook=False)
-  net.from_nx(G)
-  net.set_options("""
+    net = Network(height=f"{height}px", width=width, notebook=False)
+    net.from_nx(G)
+    net.set_options("""
     var options = {
       "physics": {
         "barnesHut": {
@@ -41,23 +74,23 @@ def grafo_pyvis(G, height=600, width="100%"):
       }
     }
     """)
-  net.show("temp.html")
-  with open("temp.html", "r") as f:
-    html_str = f.read()
-  st.components.v1.html(html_str, height=height+50, width=width)
+    net.show("temp.html")
+    with open("temp.html", "r") as f:
+        html_str = f.read()
+    st.components.v1.html(html_str, height=height+50)
 
 st.header("Grafo Original")
 st.write(f"Número de nós: {G_original.number_of_nodes()}")
 st.write(f"Número de arestas: {G_original.number_of_edges()}")
-st.write(f"Densidade do grafo: {nx.density(G_original)}")
-st.write(f"Grau médio do grafo: {nx.average_clustering(G_original)}")
+st.write(f"Densidade do grafo: {nx.density(G_original):.6f}")
+st.write(f"Grau médio do grafo: {nx.average_clustering(G_original):.6f}")
 grafo_pyvis(G_original)
 
 st.header("Grafo após simulação SEIR")
 st.write(f"Número de nós: {G_seir.number_of_nodes()}")
 st.write(f"Número de arestas: {G_seir.number_of_edges()}")
-st.write(f"Densidade do grafo: {nx.density(G_seir)}")
-st.write(f"Grau médio do grafo: {nx.average_clustering(G_seir)}")
+st.write(f"Densidade do grafo: {nx.density(G_seir):.6f}")
+st.write(f"Grau médio do grafo: {nx.average_clustering(G_seir):.6f}")
 
 status_cont = df_status['status_label'].value_counts()
 st.subheader("Quantidade por estado:")
@@ -79,7 +112,7 @@ grafo_pyvis(G_seir)
 
 st.header("Top 10 nós mais infectados")
 st.table(df_top10)
-st.subheader("Grafo com possiveis nós")
+st.subheader("Grafo com possíveis nós")
 color_risco_map = {'Infectado': '#C1121F', 'Removido': '#4A5759', 'Suscetível': '#669BBC', 'Em risco': 'purple', 'Exposto': '#F4A261'}
 G_risco = G_seir.copy()
 top10_risco = df_top10['Node'].astype(int).tolist()
