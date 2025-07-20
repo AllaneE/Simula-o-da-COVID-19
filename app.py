@@ -14,15 +14,19 @@ def display_pyvis_graph(G, name="graph.html"):
 
     net = Network(notebook=False, height="600px", width="100%", bgcolor="#222222", font_color="white")
     net.from_nx(G)
-    path = f"/tmp/{name}"
     
-    # Gera o HTML com notebook=False para funcionar no Streamlit
-    net.show(path)  # Por padrão, notebook=False
+    # Criar arquivo temporário no formato certo para Streamlit
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+        path = tmp_file.name
+        net.write_html(path)  # Evita uso de notebook=True
+        
+    # Exibir HTML no Streamlit
+    with open(path, 'r', encoding='utf-8') as HtmlFile:
+        source_code = HtmlFile.read()
+        components.html(source_code, height=600, width=1000)
     
-    # Exibe no Streamlit
-    HtmlFile = open(path, 'r', encoding='utf-8')
-    source_code = HtmlFile.read()
-    components.html(source_code, height=600, width=1000)
+    # (Opcional) remover arquivo depois
+    os.remove(path)
 
 # --- Carregamento dos dados ---
 G_original = nx.read_graphml('grafo_original.graphml')
