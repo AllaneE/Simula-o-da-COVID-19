@@ -28,7 +28,7 @@ def grafos_e_dados():
         # Baixar e carregar grafo_original
         response = requests.get(urls['grafo_original'])
         response.raise_for_status()  # Levanta exceção para erros HTTP
-        G_original = nx.read_graphml(/grafo_original.graphml)
+        G_original = nx.read_graphml("\grafo_original.graphml")
 
         # Baixar e carregar grafo_seir
         response = requests.get(urls['grafo_seir'])
