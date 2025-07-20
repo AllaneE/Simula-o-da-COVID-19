@@ -1,8 +1,11 @@
+import streamlit as st
 import networkx as nx
 import pandas as pd
 from pyvis.network import Network
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import tempfile
+import streamlit.components.v1 as components
 
 # Mapa de cores para os estados
 color_map = {0: '#669BBC', 1: '#F4A261', 2: '#C1121F', 3: '#4A5759'}
@@ -17,6 +20,11 @@ def calculate_graph_metrics(G, graph_name):
         avg_clustering = nx.average_clustering(G)
     except ZeroDivisionError:
         avg_clustering = 0.0
+    try:
+        assortativity = nx.degree_assortativity_coefficient(G)
+    except ZeroDivisionError:
+        assortativity = 0.0
+    connected_components = len(list(nx.connected_components(G)))
     
     metrics = f"""# Métricas do {graph_name}
 - Número de nós: {num_nodes}
@@ -24,35 +32,37 @@ def calculate_graph_metrics(G, graph_name):
 - Grau médio: {avg_degree:.2f}
 - Densidade: {density:.4f}
 - Coeficiente de aglomeração médio: {avg_clustering:.4f}
+- Assortatividade: {assortativity:.2f}
+- Número de componentes conectados: {connected_components}
 """
-    return metrics
+    return metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components
 
 # Função para carregar o grafo original
 def load_original_graph():
     try:
         G = nx.read_graphml('grafo_original.graphml')
-        print("Grafo original carregado de grafo_original.graphml")
+        st.write("Grafo original carregado de grafo_original.graphml")
     except FileNotFoundError:
         G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
-        print("Grafo original carregado de facebook_combined.txt")
-    print("Tipos dos nós:", type(list(G.nodes())[0]))
-    print("Exemplo de nós:", list(G.nodes())[:5])
+        st.write("Grafo original carregado de facebook_combined.txt")
+    st.write(f"Tipos dos nós: {type(list(G.nodes())[0])}")
+    st.write(f"Exemplo de nós: {list(G.nodes())[:5]}")
     return G
 
 # Função para carregar o grafo SEIR e os estados
 def load_seir_graph():
     G_seir = nx.read_graphml('grafo_seir.graphml')
     status_df = pd.read_csv('status.csv')
-    print("Nós em status.csv:", status_df['Node'].tolist()[:5])
-    print("Nós no grafo SEIR:", list(G_seir.nodes())[:5])
-    status_dict = dict(zip(status_df['Node'], status_df['status_label']))
+    st.write(f"Nós em status.csv: {status_df['node'].tolist()[:5]}")
+    st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
+    status_dict = dict(zip(status_df['node'], status_df['status']))
     return G_seir, status_dict
 
 # Função para carregar dados de link prediction
 def load_link_prediction_data():
     top10_df = pd.read_csv('top10.csv')
-    top_risk_nodes = set(top10_df['Node'][:5])  # Top 5 nós de risco
-    print("Top 5 nós de risco:", top_risk_nodes)
+    top_risk_nodes = set(top10_df['node'][:5])
+    st.write(f"Top 5 nós de risco: {top_risk_nodes}")
     return top_risk_nodes, top10_df
 
 # Função para criar visualização com PyVis
@@ -60,13 +70,11 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
     net.from_nx(G)
     
-    # Aplicar cores aos nós
     for node in net.nodes:
         node_id = int(node['id'])
-        node['color'] = node_colors.get(node_id, '#669BBC')  # Cor padrão para suscetível
+        node['color'] = node_colors.get(node_id, '#669BBC')
         node['title'] = f"Nó {node_id}"
     
-    # Configurações de layout
     net.set_options("""
     var options = {
       "nodes": {
@@ -84,7 +92,6 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     }
     """)
     
-    # Se top10_df for fornecido, adicionar tabela ao HTML
     if top10_df is not None:
         html_table = top10_df.head(10).to_html(index=False, classes="table table-bordered table-dark")
         net.html = f"""
@@ -105,48 +112,101 @@ def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
         </html>
         """
     
-    net.save_graph(output_file)
-    print(f"Visualização salva em: {output_file}")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+        path = tmp_file.name
+        net.save_graph(path)
+    
+    with open(path, 'r', encoding='utf-8') as f:
+        html = f.read()
+        st.components.v1.html(html, height=750)
+    st.write(f"Visualização salva em: {path}")
+
+# Função para criar visualização estática com Matplotlib
+def create_matplotlib_graph(G, node_colors, title):
+    plt.figure(figsize=(10, 8))
+    pos = nx.spring_layout(G, seed=42)
+    nx.draw(G, pos, node_color=[node_colors.get(node, '#669BBC') for node in G.nodes()], 
+            node_size=50, with_labels=False)
+    plt.title(title)
+    st.pyplot(plt)
 
 # Visualização do grafo original
 def visualize_original_graph():
+    st.title("Visualização do Grafo Original")
+    st.markdown("""
+    Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
+    """)
+    
     G = load_original_graph()
     sample_nodes = list(G.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G.nodes()]
     H = G.subgraph(sample_nodes)
     
-    # Salvar introdução e métricas em um arquivo Markdown
-    st.title(" Visualização do Grafo Original")
-    st.markdown("""
-    Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
-    """)
-
-    metrics = calculate_graph_metrics(G, "Grafo Original")
+    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = calculate_graph_metrics(G, "Grafo Original")
     with open("grafo_original_metrics.md", "w") as f:
-        f.write(intro + "\n" + metrics)
-    print("Métricas do grafo original salvas em: grafo_original_metrics.md")
+        f.write(metrics)
+    st.subheader("Métricas do Grafo Original")
+    st.markdown(f"- Número de nós: {num_nodes}")
+    st.markdown(f"- Número de arestas: {num_edges}")
+    st.markdown(f"- Grau médio: {avg_degree:.2f}")
+    st.markdown(f"- Densidade: {density:.4f}")
+    st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
+    st.markdown(f"- Assortatividade: {assortativity:.2f}")
+    st.markdown(f"- Número de componentes conectados: {connected_components}")
+    
+    st.subheader("Distribuição do Grau dos Nós")
+    degree_sequence = [d for n, d in H.degree()]
+    fig, ax = plt.subplots()
+    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
+    ax.set_title("Distribuição de Grau dos Nós")
+    ax.set_xlabel("Grau")
+    ax.set_ylabel("Quantidade de Nós")
+    st.pyplot(fig)
     
     node_colors = {node: color_map[0] for node in H.nodes()}
+    st.subheader("Visualização Estática do Grafo Original")
+    create_matplotlib_graph(H, node_colors, "Grafo Original")
+    st.subheader("Visualização Interativa do Grafo Original")
     create_pyvis_graph(H, node_colors, "Grafo Original", "grafo_original.html")
 
 # Visualização do grafo SEIR
 def visualize_seir_graph():
+    st.title("Visualização do Grafo SEIR")
     G_seir, status_dict = load_seir_graph()
     sample_nodes = list(G_seir.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
     
-    # Salvar métricas em um arquivo Markdown
-    metrics = calculate_graph_metrics(G_seir, "Grafo SEIR")
+    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = calculate_graph_metrics(G_seir, "Grafo SEIR")
     with open("grafo_seir_metrics.md", "w") as f:
-        f.write("# Visualização do Grafo SEIR\n" + metrics)
-    print("Métricas do grafo SEIR salvas em: grafo_seir_metrics.md")
+        f.write(metrics)
+    st.subheader("Métricas do Grafo SEIR")
+    st.markdown(f"- Número de nós: {num_nodes}")
+    st.markdown(f"- Número de arestas: {num_edges}")
+    st.markdown(f"- Grau médio: {avg_degree:.2f}")
+    st.markdown(f"- Densidade: {density:.4f}")
+    st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
+    st.markdown(f"- Assortatividade: {assortativity:.2f}")
+    st.markdown(f"- Número de componentes conectados: {connected_components}")
+    
+    st.subheader("Distribuição do Grau dos Nós")
+    degree_sequence = [d for n, d in H.degree()]
+    fig, ax = plt.subplots()
+    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
+    ax.set_title("Distribuição de Grau dos Nós")
+    ax.set_xlabel("Grau")
+    ax.set_ylabel("Quantidade de Nós")
+    st.pyplot(fig)
     
     node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
+    st.subheader("Visualização Estática do Grafo SEIR")
+    create_matplotlib_graph(H, node_colors, "Rede após Simulação SEIR")
+    st.subheader("Visualização Interativa do Grafo SEIR")
     create_pyvis_graph(H, node_colors, "Rede após Simulação SEIR", "grafo_seir.html")
 
 # Visualização do grafo com link prediction
 def visualize_link_prediction_graph():
+    st.title("Previsão de Próximos Infectados com Link Prediction")
     G_seir, status_dict = load_seir_graph()
     top_risk_nodes, top10_df = load_link_prediction_data()
     sample_nodes = list(G_seir.nodes())[:1000]
@@ -161,6 +221,21 @@ def visualize_link_prediction_graph():
             status = status_dict.get(node, 0)
             colors[node] = color_map[status]
     
+    st.subheader("Top 10 Nós de Risco")
+    st.dataframe(top10_df.head(10))
+    
+    st.subheader("Distribuição do Grau dos Nós")
+    degree_sequence = [d for n, d in H.degree()]
+    fig, ax = plt.subplots()
+    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
+    ax.set_title("Distribuição de Grau dos Nós")
+    ax.set_xlabel("Grau")
+    ax.set_ylabel("Quantidade de Nós")
+    st.pyplot(fig)
+    
+    st.subheader("Visualização Estática do Grafo com Link Prediction")
+    create_matplotlib_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction")
+    st.subheader("Visualização Interativa do Grafo com Link Prediction")
     create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
 
 # Legenda para referência
@@ -172,9 +247,18 @@ legend_elements = [
     mpatches.Patch(color="#F4A261", label="Expostos"),
 ]
 
-# Executar visualizações
+# Interface principal
 if __name__ == "__main__":
-    visualize_original_graph()
-    visualize_seir_graph()
-    visualize_link_prediction_graph()
-    print("Visualizações geradas: grafo_original.html, grafo_seir.html, grafo_link_prediction.html")
+    st.sidebar.title("Navegação")
+    page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
+    
+    st.sidebar.markdown("### Legenda de Cores")
+    for patch in legend_elements:
+        st.sidebar.markdown(f"- {patch.get_label()}: <span style='color:{patch.get_facecolor()}'>⬤</span>", unsafe_allow_html=True)
+    
+    if page == "Grafo Original":
+        visualize_original_graph()
+    elif page == "Grafo SEIR":
+        visualize_seir_graph()
+    elif page == "Link Prediction":
+        visualize_link_prediction_graph()
