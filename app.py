@@ -1,139 +1,106 @@
 import streamlit as st
-from pyvis.network import Network
-import networkx as nx
 import pandas as pd
-import os
-from streamlit.components.v1 import html
+import networkx as nx
+from pyvis.network import Network
 
-# Configuração da página do Streamlit
-st.set_page_config(page_title="Simulação de COVID-19 com Modelo SEID", layout="wide")
+st.set_page_config(page_title="Projeto Simulação SEIR - COVID-19", layout="wide")
 
-# Função para carregar o grafo a partir do arquivo
-def load_graph(file_path, file_type='txt'):
-    if file_type == 'txt':
-        G = nx.read_edgelist(file_path, nodetype=int)
-    elif file_type == 'graphml':
-        G = nx.read_graphml(file_path)
-    return G
-
-# Função para criar grafo interativo com pyvis
-def create_pyvis_graph(G, title, state_col=None, highlight_edges=None, height="500px"):
-    net = Network(height=height, width="100%", notebook=False, directed=False)
-    net.set_options('''
-    {
-        "nodes": {
-            "font": {
-                "size": 10
-            }
-        },
-        "edges": {
-            "color": {
-                "inherit": false
-            },
-            "smooth": false
-        },
-        "physics": {
-            "barnesHut": {
-                "gravitationalConstant": -8000,
-                "springLength": 100
-            }
-        }
-    }
-    ''')
-
-    state_colors = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
-
-    # Adicionar nós
-    for node in G.nodes():
-        color = state_colors[G.nodes[node][state_col]] if state_col and state_col in G.nodes[node] else 'blue'
-        net.add_node(node, label=str(node), color=color, size=10)
-
-    # Adicionar arestas
-    for u, v in G.edges():
-        color = 'purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray'
-        net.add_edge(u, v, color=color)
-
-    # Salvar grafo como HTML
-    html_file = f"{title.replace(' ', '_')}.html"
-    net.save_graph(html_file)
-    return html_file
-
-# Interface do Streamlit
-st.title("Simulação de COVID-19 com Modelo SEID")
-
-# Explicação do projeto (baseado no README.md)
-st.header("Sobre o Projeto")
+st.title("Simulação Epidemia SEIR em Rede - COVID-19")
 st.markdown("""
-Este projeto simula a propagação da COVID-19 em uma rede de contatos utilizando o modelo epidemiológico SEID (Suscetível, Exposto, Infectado, Morto). 
-O grafo inicial é baseado em uma rede social do Facebook (`facebook_combined.txt`), onde os nós representam indivíduos e as arestas representam interações. 
-A simulação modela a evolução dos estados dos nós ao longo do tempo, considerando taxas de infecção, exposição, recuperação e mortalidade. 
-Além disso, é realizada uma predição de links para identificar possíveis novos contatos que podem facilitar a propagação da doença, destacados em roxo no grafo final.
+Este projeto simula a propagação de uma epidemia usando o modelo SEIR em uma rede social real (dataset Facebook).
+Utilizamos métricas de teoria de redes para analisar o grafo antes e depois da simulação, além de aplicar link prediction para prever quais nós estão em maior risco de infecção.
 """)
 
-# Carregar e exibir grafo original
+@st.cache_data
+def grafos_e_dados():
+    G_original = nx.read_graphml("grafo_original.graphml")
+    G_seir = nx.read_graphml("grafo_seir.graphml")
+    df_status = pd.read_csv("status.csv")
+    df_top10 = pd.read_csv("top10.csv")
+    return G_original, G_seir, df_status, df_top10
+
+try:
+    G_original, G_seir, df_status, df_top10 = grafos_e_dados()
+except Exception as e:
+    st.error(f"Erro ao carregar os dados: {e}")
+    st.stop()
+
+def grafo_pyvis(G, height=600, width="100%"):
+    net = Network(height=f"{height}px", width=width, notebook=False)
+    net.from_nx(G)
+    net.set_options("""
+    var options = {
+      "physics": {
+        "barnesHut": {
+          "gravitationalConstant": -8000,
+          "springLength": 250,
+          "springConstant": 0.001
+        },
+        "minVelocity": 0.75
+      }
+    }
+    """)
+    
+    # Gerar HTML em memória e injetar direto
+    html_str = net.generate_html()
+    st.components.v1.html(html_str, height=height+50, width=width)
+
 st.header("Grafo Original")
-try:
-    G_original = load_graph("facebook_combined.txt", file_type='txt')
-    num_nodes = G_original.number_of_nodes()
-    num_edges = G_original.number_of_edges()
-    st.write(f"Número de nós: {num_nodes}")
-    st.write(f"Número de arestas: {num_edges}")
-    html_file = create_pyvis_graph(G_original, "Grafo_Original")
-    with open(html_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    html(html_content, height=500)
-except FileNotFoundError:
-    st.error("Arquivo 'facebook_combined.txt' não encontrado.")
+st.write(f"Número de nós: {G_original.number_of_nodes()}")
+st.write(f"Número de arestas: {G_original.number_of_edges()}")
+st.write(f"Densidade do grafo: {nx.density(G_original):.6f}")
+st.write(f"Grau médio do grafo: {nx.average_clustering(G_original):.6f}")
+grafo_pyvis(G_original)
 
-# Carregar e exibir grafo após simulação SEID
-st.header("Grafo Após Simulação SEID")
-try:
-    G_seid = load_graph("grafo_seir.graphml", file_type='graphml')
-    # Carregar estados dos nós a partir de status.csv
-    status_df = pd.read_csv("status.csv")
-    state_counts = status_df['status_label'].value_counts().to_dict()
-    
-    # Atribuir estados aos nós
-    for _, row in status_df.iterrows():
-        G_seid.nodes[row['node']]['status_label'] = row['status']
-    
-    st.write(f"Número de nós: {G_seid.number_of_nodes()}")
-    st.write(f"Número de arestas: {G_seid.number_of_edges()}")
-    st.write("Distribuição dos estados:")
-    st.write(f"Suscetíveis: {state_counts.get('S', 0)}")
-    st.write(f"Expostos: {state_counts.get('E', 0)}")
-    st.write(f"Infectados: {state_counts.get('I', 0)}")
-    st.write(f"Mortos: {state_counts.get('D', 0)}")
-    html_file = create_pyvis_graph(G_seid, "Grafo_Apos_Simulacao", state_col='status')
-    with open(html_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    html(html_content, height=500)
-except FileNotFoundError:
-    st.error("Arquivos 'grafo_seir.graphml' ou 'status.csv' não encontrados.")
+st.header("Grafo após simulação SEIR")
+st.write(f"Número de nós: {G_seir.number_of_nodes()}")
+st.write(f"Número de arestas: {G_seir.number_of_edges()}")
+st.write(f"Densidade do grafo: {nx.density(G_seir):.6f}")
+st.write(f"Grau médio do grafo: {nx.average_clustering(G_seir):.6f}")
 
-# Exibir tabela de predição de links
-st.header("Predição de Links")
-try:
-    top10_df = pd.read_csv("top10.csv")
-    st.write("Tabela com os Top 10 Links Previstos:")
-    st.table(top10_df)
-    
-    # Grafo com predição de links
-    st.header("Grafo com Predição de Links")
-    highlight_edges = [(row['node1'], row['node2']) for _, row in top10_df.iterrows()]
-    html_file = create_pyvis_graph(G_seid, "Grafo_com_Links_Previstos", state_col='status', highlight_edges=highlight_edges)
-    with open(html_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    html(html_content, height=500)
-except FileNotFoundError:
-    st.error("Arquivo 'top10.csv' não encontrado.")
+status_cont = df_status['status_label'].value_counts()
+st.subheader("Quantidade por estado:")
+st.table(status_cont)
 
-# Legenda
+color_map = {'Suscetível': '#669BBC', 'Exposto': '#F4A261', 'Infectado': '#C1121F', 'Removido': '#4A5759'}
+colors = []
+for node in G_seir.nodes():
+    status_label = df_status.loc[df_status['Node'] == int(node), 'status_label'].values
+    if len(status_label) > 0:
+        colors.append(color_map.get(status_label[0], '#999999'))
+    else:
+        colors.append('#999999')
+
+for i, node in enumerate(G_seir.nodes()):
+    G_seir.nodes[node]['color'] = colors[i]
+
+grafo_pyvis(G_seir)
+
+st.header("Top 10 nós mais infectados")
+st.table(df_top10)
+
+st.subheader("Grafo com possíveis nós")
+color_risco_map = {'Infectado': '#C1121F', 'Removido': '#4A5759', 'Suscetível': '#669BBC', 'Em risco': 'purple', 'Exposto': '#F4A261'}
+G_risco = G_seir.copy()
+top10_risco = df_top10['Node'].astype(int).tolist()
+for node in G_risco.nodes():
+    if node in top10_risco:
+        G_risco.nodes[node]['color'] = color_risco_map['Em risco']
+    else:
+        status_label = df_status.loc[df_status['Node'] == int(node), 'status_label'].values
+        if len(status_label) > 0:
+            G_risco.nodes[node]['color'] = color_risco_map.get(status_label[0], '#999999')
+        else:
+            G_risco.nodes[node]['color'] = '#999999'
+
+grafo_pyvis(G_risco)
+
 st.markdown("""
-**Legenda das Cores:**  
+---  
+**Legenda das cores no grafo:**  
 - Vermelho: Infectado  
-- Verde Escuro: Removido  
-- Azul Claro: Suscetível  
+- Verde escuro: Removido  
+- Azul claro: Suscetível  
 - Amarelo: Exposto  
-- Roxo: Nós em risco (Link Prediction)
+- Roxo: Próximos nós com maior risco (Link Prediction)
 """)
