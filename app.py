@@ -154,7 +154,6 @@ def visualize_original_graph():
     st.markdown(f"- Densidade: {density:.4f}")
     st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
     st.markdown(f"- Assortatividade: {assortativity:.2f}")
-    st.markdown(f"- Número de componentes conectados: {connected_components}")
     
     st.subheader("Distribuição do Grau dos Nós")
     degree_sequence = [d for n, d in H.degree()]
@@ -192,7 +191,6 @@ def visualize_seir_graph():
     st.markdown(f"- Densidade: {density:.4f}")
     st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
     st.markdown(f"- Assortatividade: {assortativity:.2f}")
-    st.markdown(f"- Número de componentes conectados: {connected_components}")
     
     node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
     st.subheader("Visualização Interativa do Grafo SEIR")
@@ -221,15 +219,6 @@ def visualize_link_prediction_graph():
     
     st.subheader("Top 10 Nós de Risco")
     st.dataframe(top10_df.head(10))
-    
-    st.subheader("Distribuição do Grau dos Nós")
-    degree_sequence = [d for n, d in H.degree()]
-    fig, ax = plt.subplots()
-    ax.hist(degree_sequence, bins=range(1, max(degree_sequence)+2), color='skyblue', edgecolor='black')
-    ax.set_title("Distribuição de Grau dos Nós")
-    ax.set_xlabel("Grau")
-    ax.set_ylabel("Quantidade de Nós")
-    st.pyplot(fig)
 
     st.subheader("Visualização Interativa do Grafo com Link Prediction")
     create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
