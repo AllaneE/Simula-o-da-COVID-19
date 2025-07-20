@@ -77,7 +77,7 @@ try:
     status_df = pd.read_csv("status.csv")
 
     for _, row in status_df.iterrows():
-        G_seid.nodes[str(row['node'])]['status_label'] = row['status_label']
+        G_seid.nodes[str(row['Node'])]['status_label'] = row['status_label']
 
     counts = status_df['status_label'].value_counts().to_dict()
     st.write("Distribuição dos estados:")
