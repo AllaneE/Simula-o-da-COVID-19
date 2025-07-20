@@ -13,17 +13,21 @@ def display_pyvis_graph(G, name="graph.html"):
 
     net = Network(notebook=False, height="600px", width="100%", bgcolor="#222222", font_color="white")
     net.from_nx(G)
-    
+
+    # Cor fixa para as arestas
+    for edge in net.edges:
+        edge['color'] = "#AAAAAA"  # cinza claro, pode trocar por outra cor
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
         path = tmp_file.name
-        net.write_html(path)  # Evita uso de notebook=True
+        net.write_html(path)
         
-    # Exibir HTML no Streamlit
     with open(path, 'r', encoding='utf-8') as HtmlFile:
         source_code = HtmlFile.read()
         components.html(source_code, height=600, width=1000)
-    
+
     os.remove(path)
+
 
 G_original = nx.read_graphml('grafo_original.graphml')
 G_seir = nx.read_graphml('grafo_seir.graphml')
