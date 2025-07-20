@@ -1,115 +1,105 @@
-import streamlit as st
 import networkx as nx
-import matplotlib.pyplot as plt
 import pandas as pd
 from pyvis.network import Network
-import streamlit.components.v1 as components
+import streamlit as st
 
-# Fundo escuro para matplotlib
-plt.style.use('dark_background')
+# Configuração do Streamlit
+st.set_page_config(page_title="Simulação da Propagação da COVID-19", layout="wide")
 
-st.set_page_config(page_title="Simulação COVID-19 com Modelo SEIR", layout="wide")
+# Mapa de cores para os estados
+color_map = {0: '#669BBC', 1: '#F4A261', 2: '#C1121F', 3: '#4A5759'}
 
-# Carregar grafo
-def load_graph(file_path, file_type='txt'):
-    if file_type == 'txt':
-        return nx.read_edgelist(file_path, nodetype=int)
-    elif file_type == 'graphml':
-        return nx.read_graphml(file_path)
+# Função para carregar o grafo original
+def load_original_graph():
+    try:
+        G = nx.read_graphml('grafo_original.graphml')
+    except FileNotFoundError:
+        G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
+    return G
 
-# Plotar com matplotlib
-def plot_graph(G, title, state_col=None, highlight_edges=None):
-    plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(G, seed=42)
-    
-    if state_col:
-        state_colors = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
-        colors = [state_colors.get(G.nodes[node].get(state_col, 'S'), 'gray') for node in G.nodes()]
-    else:
-        colors = 'cyan'
+# Função para carregar o grafo SEIR e os estados
+def load_seir_graph():
+    try:
+        G_seir = nx.read_graphml('grafo_seir.graphml')
+        status_df = pd.read_csv('status.csv')
+        status_df['node'] = status_df['Node'].astype(str)
+        status_dict = dict(zip(status_df['node'], status_df['Status']))
+        return G_seir, status_dict
+    except FileNotFoundError:
+        raise FileNotFoundError("Arquivos 'grafo_seir.graphml' ou 'status.csv' não encontrados.")
 
-    edge_colors = ['purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray' for u, v in G.edges()]
-    
-    nx.draw(G, pos, node_color=colors, edge_color=edge_colors, with_labels=False, node_size=80)
-    plt.title(title)
-    return plt
+# Função para carregar dados de link prediction
+def load_link_prediction_data():
+    try:
+        top10_df = pd.read_csv('top10.csv')
+        top_risk_nodes = set(top10_df['node'])
+        return top_risk_nodes, top10_df
+    except FileNotFoundError:
+        raise FileNotFoundError("Arquivo 'top10.csv' não encontrado.")
 
-# Plotar grafo com Pyvis
-def plot_graph_pyvis(G, state_col=None, highlight_edges=None):
-    net = Network(height="600px", width="100%", bgcolor="#222222", font_color="white")
-    net.barnes_hut()
+# Função para criar visualização com PyVis
+def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
+    net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
+    net.from_nx(G)
+    for node in net.nodes:
+        node_id = str(node['id'])
+        node['color'] = node_colors.get(node_id, '#AAAAAA')
+        node['title'] = f"Nó {node_id}"
+    net.set_options("""
+    var options = {
+      "nodes": {"shape": "dot", "size": 10},
+      "physics": {"barnesHut": {"gravitationalConstant": -2000, "centralGravity": 0.3, "springLength": 95}, "minVelocity": 0.75}
+    }
+    """)
+    if top10_df is not None:
+        table_html = "<h3>Top 10 Links de Maior Risco:</h3><table border='1'><tr><th>Nó 1</th><th>Nó 2</th><th>Score</th></tr>"
+        for _, row in top10_df.iterrows():
+            table_html += f"<tr><td>{row['node1']}</td><td>{row['node2']}</td><td>{row.get('score', 'N/A'):.6f}</td></tr>"
+        table_html += "</table>"
+        net.add_node(-1, label=" ", title=table_html, shape="text", x=-1000, y=-1000, fixed=True, physics=False)
+    net.save_graph(output_file)
 
-    color_map = {'S': 'green', 'E': 'yellow', 'I': 'red', 'D': 'black'}
-    for node in G.nodes():
-        state = G.nodes[node].get(state_col, 'S')
-        color = color_map.get(state, 'gray')
-        net.add_node(node, label=str(node), color=color)
+# Interface Streamlit
+st.title("Simulação da Propagação da COVID-19 em Redes Sociais")
 
-    for u, v in G.edges():
-        color = 'purple' if highlight_edges and ((u, v) in highlight_edges or (v, u) in highlight_edges) else 'gray'
-        net.add_edge(u, v, color=color)
-
-    net.save_graph("graph.html")
-    return "graph.html"
-
-# Interface
-st.title("Simulação COVID-19 com Modelo SEIR")
-
-st.header("Sobre o Projeto")
-st.markdown("""
-Este projeto simula a propagação da COVID-19 usando o modelo SEIR (Suscetível, Exposto, Infectado, Removido) em uma rede social baseada em dados do Facebook.
-""")
-
-# --- Grafo Original
-st.subheader("Grafo Original")
+# Grafo Original
+st.subheader("🔗 Grafo Original")
 try:
-    G_original = load_graph("facebook_combined.txt", file_type='txt')
-    st.write(f"Nós: {G_original.number_of_nodes()}, Arestas: {G_original.number_of_edges()}")
-    fig = plot_graph(G_original, "Grafo Original")
-    st.pyplot(fig)
+    G_original = load_original_graph()
+    node_colors = {str(node): color_map[0] for node in G_original.nodes()}
+    num_nodes = G_original.number_of_nodes()
+    num_edges = G_original.number_of_edges()
+    st.write(f"Nós: {num_nodes}")
+    st.whitee(f"Arestas: {num_edges}")
+    create_pyvis_graph(G_original, node_colors, "Grafo Original", "grafo_original.html")
+    with open("grafo_original.html", "r", encoding="utf-8") as f:
+        st.components.v1.html(f.read(), height=800)
 except FileNotFoundError:
-    st.error("Arquivo 'facebook_combined.txt' não encontrado.")
+    st.error("Arquivo 'grafo_original.graphml' ou 'facebook_combined.txt' não encontrado.")
 
-# --- Grafo SEID
-st.subheader("Grafo Após Simulação SEIDR")
+# Grafo SEIR
+st.subheader("🔗 Rede após Simulação SEIR")
 try:
-    G_seid = load_graph("grafo_seir.graphml", file_type='graphml')
-    status_df = pd.read_csv("status.csv")
-
-    for _, row in status_df.iterrows():
-        G_seid.nodes[str(row['Node'])]['status_label'] = row['status_label']
-
-    counts = status_df['status_label'].value_counts().to_dict()
-    st.write("Distribuição dos estados:")
-    st.write(counts)
-
-    fig = plot_graph(G_seid, "Grafo SEIR com Matplotlib", state_col='status')
-    st.pyplot(fig)
-
-    st.markdown("### Visualização Interativa (Pyvis)")
-    html_file = plot_graph_pyvis(G_seid, state_col='status')
-    with open(html_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    components.html(html_content, height=600, scrolling=True)
-
+    G_seir, status_dict = load_seir_graph()
+    node_colors = {str(node): color_map[status_dict.get(str(node), 0)] for node in G_seir.nodes()}
+    num_nodes = G_seir.number_of_nodes()
+    num_edges = G_seir.number_of_edges()
+    st.write(f"Nós: {num_nodes}")
+    st.whitee(f"Arestas: {num_edges}")
+    create_pyvis_graph(G_seir, node_colors, "Rede SEIR", "grafo_seir.html")
+    with open("grafo_seir.html", "r", encoding="utf-8") as f:
+        st.components.v1.html(f.read(), height=800)
 except FileNotFoundError:
     st.error("Arquivos 'grafo_seir.graphml' ou 'status.csv' não encontrados.")
 
-# --- Predição de Links
-st.subheader("Predição de Novos Links")
+# Link Prediction
+st.subheader("🔗 Previsão Simples com Link Prediction")
 try:
-    top10_df = pd.read_csv("top10.csv")
-    st.dataframe(top10_df)
-
-    edges_pred = [(str(row['node1']), str(row['node2'])) for _, row in top10_df.iterrows()]
-    fig = plot_graph(G_seid, "Grafo com Links Previstos (Roxo)", state_col='status', highlight_edges=edges_pred)
-    st.pyplot(fig)
-
-    st.markdown("### Visualização Interativa com Links Previstos (Pyvis)")
-    html_file = plot_graph_pyvis(G_seid, state_col='status', highlight_edges=edges_pred)
-    with open(html_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    components.html(html_content, height=600, scrolling=True)
-
+    top_risk_nodes, top10_df = load_link_prediction_data()
+    node_colors = {str(node): "purple" if str(node) in top_risk_nodes else color_map[status_dict.get(str(node), 0)] for node in G_seir.nodes()}
+    st.write("Visualizando os 10 pares de nós mais prováveis de conexão futura (maior risco de contágio).")
+    create_pyvis_graph(G_seir, node_colors, "Link Prediction", "grafo_link_prediction.html", top10_df)
+    with open("grafo_link_prediction.html", "r", encoding="utf-8") as f:
+        st.components.v1.html(f.read(), height=800)
 except FileNotFoundError:
     st.error("Arquivo 'top10.csv' não encontrado.")
