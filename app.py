@@ -224,4 +224,95 @@ def visualize_original_graph():
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
     G_seir, status_dict = load_seir_graph()
-    if G_seir is None or not status_dict
+    if G_seir is None or not status_dict:
+        st.error("Não foi possível carregar o grafo SEIR ou os estados. Verifique os arquivos de entrada.")
+        return
+    
+    sample_nodes = list(G_seir.nodes())[:500]
+    sample_nodes = [node for node in sample_nodes if node in G_seir.nodes() and node in status_dict]
+    if not sample_nodes:
+        st.error("Nenhum nó válido encontrado para o subgrafo SEIR. Verifique os dados de entrada.")
+        return
+    H = G_seir.subgraph(sample_nodes)
+    
+    metrics_data = calculate_graph_metrics(G_seir, "Grafo SEIR")
+    if metrics_data[0] is None:
+        st.error("Não foi possível calcular as métricas do grafo SEIR.")
+        return
+    metrics, num_nodes, num_edges, avg_degree, density, avg_clustering, assortativity, connected_components = metrics_data
+    
+    with open("grafo_seir_metrics.md", "w") as f:
+        f.write(metrics)
+    st.subheader("Métricas do Grafo SEIR")
+    st.markdown(f"- Número de nós: {num_nodes}")
+    st.markdown(f"- Número de arestas: {num_edges}")
+    st.markdown(f"- Grau médio: {avg_degree:.2f}")
+    st.markdown(f"- Densidade: {density:.4f}")
+    st.markdown(f"- Coeficiente de aglomeração médio: {avg_clustering:.4f}")
+    st.markdown(f"- Assortatividade: {assortativity:.2f}")
+    
+    node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
+    st.subheader("Visualização Interativa do Grafo SEIR")
+    create_pyvis_graph(H, node_colors, "Rede após Simulação SEIR", "grafo_seir.html")
+
+# Visualização do grafo com link prediction
+def visualize_link_prediction_graph():
+    st.title("Previsão de Próximos Infectados com Link Prediction")
+    G_seir, status_dict = load_seir_graph()
+    if G_seir is None or not status_dict:
+        st.error("Não foi possível carregar o grafo SEIR ou os estados. Verifique os arquivos de entrada.")
+        return
+    top_risk_nodes, top10_df = load_link_prediction_data()
+    if top10_df.empty:
+        st.error("Não foi possível carregar os dados de link prediction.")
+        return
+    
+    sample_nodes = list(G_seir.nodes())[:500]
+    sample_nodes = [node for node in sample_nodes if node in G_seir.nodes() and node in status_dict]
+    if not sample_nodes:
+        st.error("Nenhum nó válido encontrado para o subgrafo de link prediction. Verifique os dados de entrada.")
+        return
+    H = G_seir.subgraph(sample_nodes)
+    
+    colors = {}
+    for node in H.nodes():
+        if node in top_risk_nodes:
+            colors[node] = "purple"
+        else:
+            status = status_dict.get(node, 0)
+            colors[node] = color_map[status]
+    
+    st.subheader("Top 10 Nós de Risco")
+    st.dataframe(top10_df.head(10))
+    
+    st.subheader("Visualização Interativa do Grafo com Link Prediction")
+    create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
+
+# Legenda para referência
+from matplotlib.colors import to_hex
+
+# Criar os patches
+legend_elements = [
+    mpatches.Patch(color="#C1121F", label="Infectado"),
+    mpatches.Patch(color="#4A5759", label="Recuperado"),
+    mpatches.Patch(color="#669BBC", label="Suscetível"),
+    mpatches.Patch(color="purple", label="Próv. Infectado (risco)"),
+    mpatches.Patch(color="#F4A261", label="Expostos"),
+]
+
+# Interface principal
+if __name__ == "__main__":
+    st.sidebar.title("Navegação")
+    for patch in legend_elements:
+        cor_hex = to_hex(patch.get_facecolor())
+        st.sidebar.markdown(
+            f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
+            unsafe_allow_html=True)
+    page = st.sidebar.radio("Selecione a visualização", ["Grafo Original", "Grafo SEIR", "Link Prediction"])
+    
+    if page == "Grafo Original":
+        visualize_original_graph()
+    elif page == "Grafo SEIR":
+        visualize_seir_graph()
+    elif page == "Link Prediction":
+        visualize_link_prediction_graph()
