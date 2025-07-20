@@ -163,7 +163,7 @@ def visualize_original_graph():
 # Visualização do grafo SEIR
 def visualize_seir_graph():
     st.title("Visualização do Grafo SEIR")
-    G_seir, status_dict = load_seir_graph()
+    G_seir = load_seir_graph()
     if G_seir is None:
         st.error("Não foi possível carregar o grafo SEIR. Verifique os arquivos de entrada.")
         return
@@ -196,7 +196,7 @@ def visualize_seir_graph():
 # Visualização do grafo com link prediction
 def visualize_link_prediction_graph():
     st.title("Previsão de Próximos Infectados com Link Prediction")
-    G_seir, status_dict = load_seir_graph()
+    G_seir = load_seir_graph()
     if G_seir is None:
         st.error("Não foi possível carregar o grafo SEIR para link prediction. Verifique os arquivos de entrada.")
         return
