@@ -7,6 +7,26 @@ import matplotlib.patches as mpatches
 # Mapa de cores para os estados
 color_map = {0: '#669BBC', 1: '#F4A261', 2: '#C1121F', 3: '#4A5759'}
 
+# Função para calcular métricas do grafo
+def calculate_graph_metrics(G, graph_name):
+    num_nodes = G.number_of_nodes()
+    num_edges = G.number_of_edges()
+    avg_degree = sum(dict(G.degree()).values()) / num_nodes
+    density = nx.density(G)
+    try:
+        avg_clustering = nx.average_clustering(G)
+    except ZeroDivisionError:
+        avg_clustering = 0.0
+    
+    metrics = f"""# Métricas do {graph_name}
+- Número de nós: {num_nodes}
+- Número de arestas: {num_edges}
+- Grau médio: {avg_degree:.2f}
+- Densidade: {density:.4f}
+- Coeficiente de aglomeração médio: {avg_clustering:.4f}
+"""
+    return metrics
+
 # Função para carregar o grafo original
 def load_original_graph():
     try:
@@ -33,17 +53,16 @@ def load_link_prediction_data():
     top10_df = pd.read_csv('top10.csv')
     top_risk_nodes = set(top10_df['node'][:5])  # Top 5 nós de risco
     print("Top 5 nós de risco:", top_risk_nodes)
-    return top_risk_nodes
+    return top_risk_nodes, top10_df
 
 # Função para criar visualização com PyVis
-def create_pyvis_graph(G, node_colors, title, output_file):
+def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
     net.from_nx(G)
     
     # Aplicar cores aos nós
     for node in net.nodes:
-        node_id = int(node['id'])  # Converter para inteiro
-        # Usar cor padrão se node_id não estiver em node_colors
+        node_id = int(node['id'])
         node['color'] = node_colors.get(node_id, '#669BBC')  # Cor padrão para suscetível
         node['title'] = f"Nó {node_id}"
     
@@ -65,28 +84,96 @@ def create_pyvis_graph(G, node_colors, title, output_file):
     }
     """)
     
+    # Se top10_df for fornecido, adicionar tabela ao HTML
+    if top10_df is not None:
+        html_table = top10_df.head(10).to_html(index=False, classes="table table-bordered table-dark")
+        net.html = f"""
+        <html>
+        <head>
+            <title>{title}</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+            <style>
+                body {{ background-color: #222222; color: white; }}
+                .table {{ margin: 20px auto; width: 80%; }}
+            </style>
+        </head>
+        <body>
+            <h1 style="text-align: center;">{title}</h1>
+            {html_table}
+            {net.html}
+        </body>
+        </html>
+        """
+    
     net.save_graph(output_file)
     print(f"Visualização salva em: {output_file}")
 
 # Visualização do grafo original
 def visualize_original_graph():
     G = load_original_graph()
-    sample_nodes = list(G.nodes())[:1000]  # Subgrafo com 1000 nós
-    # Validar que sample_nodes contém nós válidos
+    sample_nodes = list(G.nodes())[:1000]
     sample_nodes = [node for node in sample_nodes if node in G.nodes()]
     H = G.subgraph(sample_nodes)
     
-    # Todos os nós são suscetíveis (estado 0) no grafo original
-    node_colors = {node: color_map[0] for node in H.nodes()}
+    # Salvar introdução e métricas em um arquivo Markdown
+    intro = """# Visualização do Grafo Original
+## Introdução ao Projeto
+Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Recuperado). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
+"""
+    metrics = calculate_graph_metrics(G, "Grafo Original")
+    with open("grafo_original_metrics.md", "w") as f:
+        f.write(intro + "\n" + metrics)
+    print("Métricas do grafo original salvas em: grafo_original_metrics.md")
     
+    node_colors = {node: color_map[0] for node in H.nodes()}
     create_pyvis_graph(H, node_colors, "Grafo Original", "grafo_original.html")
 
 # Visualização do grafo SEIR
 def visualize_seir_graph():
     G_seir, status_dict = load_seir_graph()
     sample_nodes = list(G_seir.nodes())[:1000]
-    # Validar que sample_nodes contém nós válidos
     sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
     H = G_seir.subgraph(sample_nodes)
     
-    # Mapear
+    # Salvar métricas em um arquivo Markdown
+    metrics = calculate_graph_metrics(G_seir, "Grafo SEIR")
+    with open("grafo_seir_metrics.md", "w") as f:
+        f.write("# Visualização do Grafo SEIR\n" + metrics)
+    print("Métricas do grafo SEIR salvas em: grafo_seir_metrics.md")
+    
+    node_colors = {node: color_map[status_dict.get(node, 0)] for node in H.nodes()}
+    create_pyvis_graph(H, node_colors, "Rede após Simulação SEIR", "grafo_seir.html")
+
+# Visualização do grafo com link prediction
+def visualize_link_prediction_graph():
+    G_seir, status_dict = load_seir_graph()
+    top_risk_nodes, top10_df = load_link_prediction_data()
+    sample_nodes = list(G_seir.nodes())[:1000]
+    sample_nodes = [node for node in sample_nodes if node in G_seir.nodes()]
+    H = G_seir.subgraph(sample_nodes)
+    
+    colors = {}
+    for node in H.nodes():
+        if node in top_risk_nodes:
+            colors[node] = "purple"
+        else:
+            status = status_dict.get(node, 0)
+            colors[node] = color_map[status]
+    
+    create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
+
+# Legenda para referência
+legend_elements = [
+    mpatches.Patch(color="#C1121F", label="Infectado"),
+    mpatches.Patch(color="#4A5759", label="Recuperado"),
+    mpatches.Patch(color="#669BBC", label="Suscetível"),
+    mpatches.Patch(color="purple", label="Próv. Infectado (risco)"),
+    mpatches.Patch(color="#F4A261", label="Expostos"),
+]
+
+# Executar visualizações
+if __name__ == "__main__":
+    visualize_original_graph()
+    visualize_seir_graph()
+    visualize_link_prediction_graph()
+    print("Visualizações geradas: grafo_original.html, grafo_seir.html, grafo_link_prediction.html")
