@@ -18,37 +18,15 @@ Utilizamos métricas de teoria de redes para analisar o grafo antes e depois da 
 
 @st.cache_data
 def grafos_e_dados():
-    urls = {
-        'grafo_original': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_original.graphml',
-        'grafo_seir': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/grafo_seir.graphml',
-        'status': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/status.csv',
-        'top10': 'https://raw.githubusercontent.com/AllaneE/Simula%25C3%25B5-da-COVID-19/main/top10.csv'
-    }
-
     try:
-        # Carregar grafo_original
-        response = requests.get(urls['grafo_original'])
-        response.raise_for_status()
-        G_original = nx.read_graphml(StringIO(response.text))
-
-        # Carregar grafo_seir
-        response = requests.get(urls['grafo_seir'])
-        response.raise_for_status()
-        G_seir = nx.read_graphml(StringIO(response.text))
-
-        # Carregar status.csv
-        response = requests.get(urls['status'])
-        response.raise_for_status()
-        df_status = pd.read_csv(StringIO(response.text))
-
-        # Carregar top10.csv
-        response = requests.get(urls['top10'])
-        response.raise_for_status()
-        df_top10 = pd.read_csv(StringIO(response.text))
-
+        # Carregar arquivos localmente
+        G_original = nx.read_graphml("grafo_original.graphml")
+        G_seir = nx.read_graphml("grafo_seir.graphml")
+        df_status = pd.read_csv("status.csv")
+        df_top10 = pd.read_csv("top10.csv")
         return G_original, G_seir, df_status, df_top10
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Erro ao baixar os arquivos: {e}")
+    except FileNotFoundError as e:
+        raise Exception(f"Erro ao carregar os arquivos: Arquivo não encontrado - {e}")
     except nx.NetworkXError as e:
         raise Exception(f"Erro ao processar os arquivos GraphML: {e}")
     except pd.errors.ParserError as e:
