@@ -249,13 +249,15 @@ def visualize_link_prediction_graph():
     create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
 
 # Legenda para referência
-legend_elements = [
-    mpatches.Patch(color="#C1121F", label="Infectado"),
-    mpatches.Patch(color="#4A5759", label="Recuperado"),
-    mpatches.Patch(color="#669BBC", label="Suscetível"),
-    mpatches.Patch(color="purple", label="Próv. Infectado (risco)"),
-    mpatches.Patch(color="#F4A261", label="Expostos"),
-]
+from matplotlib.colors import to_hex
+
+st.sidebar.markdown("### Legenda")
+for patch in legend_elements:
+    cor_hex = to_hex(patch.get_facecolor())
+    st.sidebar.markdown(
+        f"- <span style='color:{cor_hex}'>⬤</span> {patch.get_label()}",
+        unsafe_allow_html=True
+    )
 
 # Interface principal
 if __name__ == "__main__":
