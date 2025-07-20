@@ -79,7 +79,7 @@ st.markdown("""
     Este projeto visa simular a propagação de uma doença infecciosa (como a COVID-19) em uma rede social utilizando o modelo epidemiológico SEIR (Suscetível, Exposto, Infectado, Removido). O grafo original representa uma rede social extraída de dados do Facebook, onde os nós são indivíduos e as arestas representam conexões entre eles. A análise inclui a visualização do grafo original, a simulação SEIR e a previsão de nós de alto risco usando técnicas de link prediction.
 """)
 
-st.subheader("Métricas da Rede (Subgrafo SEIR com 1000 nós)")
+st.subheader("Métricas da Rede (Subgrafo SEIR com 500 nós)")
 st.markdown("As métricas abaixo descrevem as características estruturais do subgrafo utilizado na simulação.")
 
 num_nos = H.number_of_nodes()
