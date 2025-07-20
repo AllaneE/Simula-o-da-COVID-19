@@ -41,55 +41,6 @@ def calculate_graph_metrics(G, graph_name):
         st.error(f"Erro ao calcular métricas para {graph_name}: {str(e)}")
         return None, 0, 0, 0.0, 0.0, 0.0, 0.0, 0
 
-# Função para carregar o grafo original
-def load_original_graph():
-    try:
-        G = nx.read_graphml('grafo_original.graphml')
-        st.write("Grafo original carregado de grafo_original.graphml")
-    except FileNotFoundError:
-        try:
-            G = nx.read_edgelist('facebook_combined.txt', nodetype=int, create_using=nx.Graph())
-            st.write("Grafo original carregado de facebook_combined.txt")
-        except FileNotFoundError:
-            st.error("Erro: Arquivos grafo_original.graphml e facebook_combined.txt não encontrados.")
-            return None
-    except Exception as e:
-        st.error(f"Erro ao carregar grafo original: {str(e)}")
-        return None
-    st.write(f"Tipos dos nós: {type(list(G.nodes())[0])}")
-    st.write(f"Exemplo de nós: {list(G.nodes())[:5]}")
-    return G
-
-# Função para carregar o grafo SEIR e os estados
-def load_seir_graph():
-    try:
-        G_seir = nx.read_graphml('grafo_seir.graphml')
-        status_df = pd.read_csv('status.csv')
-        st.write(f"Nós em status.csv: {status_df['Node'].tolist()[:5]}")
-        st.write(f"Nós no grafo SEIR: {list(G_seir.nodes())[:5]}")
-        status_dict = dict(zip(status_df['Node'], status_df['status_label']))
-        return G_seir, status_dict
-    except FileNotFoundError:
-        st.error("Erro: Arquivo grafo_seir.graphml ou status.csv não encontrado.")
-        return None, {}
-    except Exception as e:
-        st.error(f"Erro ao carregar grafo SEIR ou status.csv: {str(e)}")
-        return None, {}
-
-# Função para carregar dados de link prediction
-def load_link_prediction_data():
-    try:
-        top10_df = pd.read_csv('top10.csv')
-        top_risk_nodes = set(top10_df['Node'][:5])
-        st.write(f"Top 5 nós de risco: {top_risk_nodes}")
-        return top_risk_nodes, top10_df
-    except FileNotFoundError:
-        st.error("Erro: Arquivo top10.csv não encontrado.")
-        return set(), pd.DataFrame()
-    except Exception as e:
-        st.error(f"Erro ao carregar top10.csv: {str(e)}")
-        return set(), pd.DataFrame()
-
 # Função para criar visualização com PyVis
 def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     if G is None:
@@ -278,9 +229,7 @@ def visualize_link_prediction_graph():
     ax.set_xlabel("Grau")
     ax.set_ylabel("Quantidade de Nós")
     st.pyplot(fig)
-    
-    st.subheader("Visualização Estática do Grafo com Link Prediction")
-    create_matplotlib_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction")
+
     st.subheader("Visualização Interativa do Grafo com Link Prediction")
     create_pyvis_graph(H, colors, "Previsão de Próximos Infectados com Link Prediction", "grafo_link_prediction.html", top10_df)
 
