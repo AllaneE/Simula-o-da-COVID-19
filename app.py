@@ -24,10 +24,10 @@ def display_pyvis_graph(graph):
     st.components.v1.html(html_content, height=650, scrolling=True)
 
 # --- Carregamento dos dados ---
-G_original = nx.read_graphml('/mnt/data/grafo_original.graphml')
-G_seir = nx.read_graphml('/mnt/data/grafo_seir.graphml')
-status_df = pd.read_csv('/mnt/data/status.csv')
-top10_df = pd.read_csv('/mnt/data/top10.csv')
+G_original = nx.read_graphml('/content/grafo_original.graphml')
+G_seir = nx.read_graphml('/content/grafo_seir.graphml')
+status_df = pd.read_csv('/content/status.csv')
+top10_df = pd.read_csv('/content/top10.csv')
 
 status_df['Node'] = status_df['Node'].astype(str)
 top10_df['Node'] = top10_df['Node'].astype(str)
