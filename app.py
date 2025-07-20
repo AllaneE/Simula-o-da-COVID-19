@@ -42,7 +42,7 @@ status_label_dict = dict(zip(status_df['Node'], status_df['status_label']))
 top10_nodes = top10_df['Node'].tolist()
 
 valid_nodes = [node for node in G_seir.nodes() if node in status_dict]
-sample_nodes = valid_nodes[:1000]
+sample_nodes = valid_nodes[:500]
 H = G_seir.subgraph(sample_nodes).copy()
 
 # Atribuir status e rótulos
