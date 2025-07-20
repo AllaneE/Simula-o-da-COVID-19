@@ -60,32 +60,34 @@ def load_seir_graph():
 # Função para carregar dados de link prediction
 def load_link_prediction_data():
     top10_df = pd.read_csv('top10.csv')
-    top_risk_nodes = set(top10_df['Node'][:5])  # Top 5 nós de risco
-    return top_risk_nodes, top10_df
+    return top10_df
 
 
 # Função para criar visualização com PyVis
-# Função para criar visualização com PyVis
-def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None, edge_color='#808080'):
+def create_pyvis_graph(G, node_colors, title, output_file, top10_df=None):
     if G is None:
         st.error("Erro: Grafo não foi carregado corretamente.")
         return
     net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
+    net.from_nx(G)
     
-    # Adicionar nós
-    for node in G.nodes():
-        node_id = int(node)
-        net.add_node(node_id, color=node_colors.get(node_id, '#669BBC'), title=f"Nó {node_id}")
-    
-    # Adicionar arestas com cor personalizada
-    for source, target in G.edges():
-        net.add_edge(source, target, color=edge_color)
+    for node in net.nodes:
+        node_id = int(node['id'])
+        node['color'] = node_colors.get(node_id, '#669BBC')
+        node['title'] = f"Nó {node_id}"
     
     net.set_options("""
     var options = {
       "nodes": {
         "shape": "dot",
         "size": 10
+      },
+      "edges": {
+        "color": {
+          "color": "#808080",
+          "highlight": "#808080",
+          "hover": "#808080"
+        }
       },
       "physics": {
         "barnesHut": {
