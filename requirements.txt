@@ -1,0 +1,9 @@
+streamlit
+networkx
+pyvis
+matplotlib
+pandas
+ndlib
+bokeh
+numpy
+tqdm
