@@ -13,49 +13,15 @@ Simulação da propagação do COVID-19 usando o modelo SEIR em uma rede social 
 Análise de métricas de rede e previsão de nós em risco via link prediction.
 """)
 
-def carregar_dados():
-    try:
-        G_original = nx.read_graphml("grafo_original.graphml")
-        G_seir = nx.read_graphml("grafo_seir.graphml")
-        df_status = pd.read_csv("status.csv")
-        df_top10 = pd.read_csv("top10.csv")
-        return G_original, G_seir, df_status, df_top10
-    except Exception as e:
-        st.error(f"Erro ao carregar os dados: {e}")
-        st.stop()
-
 # Carregar os dados
-G_original, G_seir, df_status, df_top10 = carregar_dados()
-
-# Função simplificada para gerar grafo com PyVis
-def exibir_grafo(G, color_map=None, height=750, width="100%"):
-    net = Network(height=f"{height}px", width=width, bgcolor="#FFFFFF", font_color="black")
-
-    # Adicionar nós
-    for node, data in G.nodes(data=True):
-        status = data.get('status_label', 'Desconhecido')
-        color = color_map.get(status, '#999999') if color_map else '#C6E5B1'
-        label = f"Nó {node}"
-        net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
-
-    # Adicionar arestas
-    for source, target in G.edges():
-        net.add_edge(source, target)
-
-    # Configurações mínimas de física
-    net.set_options('''
-    {
-      "physics": {
-        "barnesHut": {
-          "gravitationalConstant": -8000,
-          "springLength": 250
-        }
-      }
-    }
-    ''')
-
-    # Renderizar HTML no Streamlit
-    components.html(net.generate_html(), height=height + 50)
+try:
+    G_original = nx.read_graphml("grafo_original.graphml")
+    G_seir = nx.read_graphml("grafo_seir.graphml")
+    df_status = pd.read_csv("status.csv")
+    df_top10 = pd.read_csv("top10.csv")
+except Exception as e:
+    st.error(f"Erro ao carregar os dados: {e}")
+    st.stop()
 
 # Exibir métricas do grafo original
 st.header("Grafo Original")
@@ -66,7 +32,23 @@ st.markdown(f"**Assortatividade**: {nx.degree_assortativity_coefficient(G_origin
 st.markdown(f"**Clustering Médio**: {nx.average_clustering(G_original):.2f}")
 
 # Visualizar grafo original
-exibir_grafo(G_original)
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+for node, data in G_original.nodes(data=True):
+    label = f"Nó {node}"
+    net.add_node(node, label=label, color="#C6E5B1", title=f"<b>{label}</b><br>Status: Desconhecido", size=10)
+for source, target in G_original.edges():
+    net.add_edge(source, target)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+components.html(net.generate_html(), height=800)
 
 # Exibir métricas do grafo SEIR
 st.header("Grafo após Simulação SEIR")
@@ -88,7 +70,25 @@ for node in G_seir.nodes():
     G_seir.nodes[node]['status_label'] = status[0] if len(status) > 0 else 'Desconhecido'
 
 # Visualizar grafo SEIR
-exibir_grafo(G_seir, color_map=color_map)
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+for node, data in G_seir.nodes(data=True):
+    status = data.get('status_label', 'Desconhecido')
+    color = color_map.get(status, '#999999')
+    label = f"Nó {node}"
+    net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
+for source, target in G_seir.edges():
+    net.add_edge(source, target)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+components.html(net.generate_html(), height=800)
 
 # Top 10 nós mais infectados
 st.header("Top 10 Nós Mais Infectados")
@@ -103,7 +103,25 @@ for node in G_risco.nodes():
     G_risco.nodes[node]['status_label'] = 'Em risco' if node in top10_risco else G_seir.nodes[node]['status_label']
 
 # Visualizar grafo com nós em risco
-exibir_grafo(G_risco, color_map=color_risco_map)
+net = Network(height="750px", width="100%", bgcolor="#FFFFFF", font_color="black")
+for node, data in G_risco.nodes(data=True):
+    status = data.get('status_label', 'Desconhecido')
+    color = color_risco_map.get(status, '#999999')
+    label = f"Nó {node}"
+    net.add_node(node, label=label, color=color, title=f"<b>{label}</b><br>Status: {status}", size=10)
+for source, target in G_risco.edges():
+    net.add_edge(source, target)
+net.set_options('''
+{
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -8000,
+      "springLength": 250
+    }
+  }
+}
+''')
+components.html(net.generate_html(), height=800)
 
 # Legenda
 st.markdown("""
