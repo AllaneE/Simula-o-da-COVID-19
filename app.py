@@ -14,9 +14,11 @@ def display_pyvis_graph(G, name="graph.html"):
     net = Network(notebook=False, height="600px", width="100%", bgcolor="#222222", font_color="white")
     net.from_nx(G)
 
-    # Cor fixa para as arestas
+    for node in net.nodes:
+        node['size'] = G.degree[node] * 2
+
     for edge in net.edges:
-        edge['color'] = "#AAAAAA"  # cinza claro, pode trocar por outra cor
+        edge['color'] = "#484D50"  
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
         path = tmp_file.name
@@ -56,7 +58,7 @@ def cor_status(status):
         0: "#669BBC",  # suscetível
         1: "#F4A261",  # exposto
         2: "#C1121F",  # infectado
-        3: "#4A5759",  # Removidos
+        3: "#FFFFFF",  # Removidos
     }
     return cores.get(status, "#FFFFFF")
 
@@ -110,7 +112,12 @@ st.subheader("Top 10 Nós Previstos como Potencialmente Infectados")
 st.dataframe(top10_df, hide_index=True)
 
 st.subheader("Visualizações Interativas dos Grafos")
-
+st.markdown("Cores:")
+st.markdown("Azul: Suscetível")
+st.markdown("Roxo: Próximo infectado")
+st.markdown("Laranja: Exposto")
+st.markdown("Vermelho: Infectado")
+st.markdown("Branco: Removido")
 tab1, tab2, tab3 = st.tabs(["Grafo Original", "Grafo Pós-Simulação SEIR", "Grafo com Previsão (Adamic-Adar)"])
 
 with tab1:
