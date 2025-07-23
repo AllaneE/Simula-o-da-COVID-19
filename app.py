@@ -101,7 +101,7 @@ st.write({
 
 st.subheader("Histograma de Grau dos Nós")
 graus = [grau for no, grau in H.degree()]
-fig, ax = plt.subplots(figsize=(7, 6))
+fig, ax = plt.subplots(figsize=(4, 6))
 ax.hist(graus, bins=20, color="#66CCFF", edgecolor="black")
 ax.set_title("Distribuição do Grau dos Nós")
 ax.set_xlabel("Grau")
