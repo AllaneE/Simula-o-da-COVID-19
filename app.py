@@ -16,7 +16,7 @@ def display_pyvis_graph(G, name="graph.html"):
 
     for node in net.nodes:
         node_id = node['id']
-        node['size'] = G.degree[node_id] * 1.5
+        node['size'] = 30
 
     for edge in net.edges:
         edge['color'] = "#484D50"  
