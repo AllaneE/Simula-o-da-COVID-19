@@ -106,6 +106,7 @@ ax.hist(graus, bins=20, color="#66CCFF", edgecolor="black")
 ax.set_title("Distribuição do Grau dos Nós")
 ax.set_xlabel("Grau")
 ax.set_ylabel("Frequência")
+plt.tight_layout()
 st.pyplot(fig)
 
 
