@@ -15,7 +15,8 @@ def display_pyvis_graph(G, name="graph.html"):
     net.from_nx(G)
 
     for node in net.nodes:
-        node['size'] = G.degree[node] * 2
+        node_id = node['id']
+        node['size'] = G.degree[node_id]
 
     for edge in net.edges:
         edge['color'] = "#484D50"  
@@ -100,7 +101,7 @@ st.write({
 
 st.subheader("Histograma de Grau dos Nós")
 graus = [grau for no, grau in H.degree()]
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(4, 3))
 ax.hist(graus, bins=20, color="#66CCFF", edgecolor="black")
 ax.set_title("Distribuição do Grau dos Nós")
 ax.set_xlabel("Grau")
