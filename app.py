@@ -101,14 +101,14 @@ st.write({
 
 st.subheader("Histograma de Grau dos Nós")
 graus = [grau for no, grau in H.degree()]
-fig, ax = plt.subplots(figsize=(4, 4))
+fig, ax = plt.subplots(figsize=(3, 2))
 ax.hist(graus, bins=20, color="#66CCFF", edgecolor="black")
-ax.set_title("Distribuição do Grau dos Nós")
-ax.set_xlabel("Grau")
-ax.set_ylabel("Frequência")
+ax.set_title("Distribuição do Grau dos Nós", fontsize=10)
+ax.set_xlabel("Grau", fontsize=8)
+ax.set_ylabel("Frequência", fontsize=8)
+ax.tick_params(axis='both', labelsize=7)
 plt.tight_layout()
-st.pyplot(fig)
-
+st.pyplot(fig, use_container_width=False)
 
 st.subheader("Top 10 Nós Previstos como Potencialmente Infectados")
 st.dataframe(top10_df, hide_index=True)
